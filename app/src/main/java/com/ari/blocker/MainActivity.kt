@@ -51,7 +51,7 @@ class MainActivity : Activity() {
             text = "Blocker"
             textSize = 30f
             typeface = Typeface.DEFAULT_BOLD
-            textColor = Color.rgb(16, 42, 67)
+            setTextColor(Color.rgb(16, 42, 67))
             gravity = Gravity.CENTER
         }
         header.addView(title)
@@ -59,7 +59,7 @@ class MainActivity : Activity() {
         val subtitle = TextView(this).apply {
             text = "Protection against unwanted adult domains"
             textSize = 15f
-            textColor = Color.rgb(98, 125, 152)
+            setTextColor(Color.rgb(98, 125, 152))
             gravity = Gravity.CENTER
             setPadding(0, dp(4), 0, dp(18))
         }
@@ -76,14 +76,14 @@ class MainActivity : Activity() {
             text = "●  Protection is off"
             textSize = 18f
             typeface = Typeface.DEFAULT_BOLD
-            textColor = Color.rgb(98, 125, 152)
+            setTextColor(Color.rgb(98, 125, 152))
         }
         card.addView(status)
 
         val info = TextView(this).apply {
             text = "DNS requests are checked against the local and central blocklists. Normal web traffic is not routed through the VPN."
             textSize = 14f
-            textColor = Color.rgb(98, 125, 152)
+            setTextColor(Color.rgb(98, 125, 152))
             setPadding(0, dp(10), 0, 0)
         }
         card.addView(info)
@@ -119,7 +119,7 @@ class MainActivity : Activity() {
         val footer = TextView(this).apply {
             text = "Tip: after hiding the icon, the active protection notification can still open the app."
             textSize = 13f
-            textColor = Color.rgb(98, 125, 152)
+            setTextColor(Color.rgb(98, 125, 152))
             setPadding(dp(4), dp(14), dp(4), 0)
         }
         root.addView(footer)
@@ -144,7 +144,7 @@ class MainActivity : Activity() {
             startService(serviceIntent)
         }
         status.text = "●  Protection is starting"
-        status.textColor = Color.rgb(21, 101, 192)
+        status.setTextColor(Color.rgb(21, 101, 192))
     }
 
     private fun hideLauncherIcon() {
