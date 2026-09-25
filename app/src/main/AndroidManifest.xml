@@ -17,8 +17,10 @@
             android:name=".MainActivity"
             android:exported="true" />
 
-        <!-- Keep MainActivity enabled at all times. The launcher icon is controlled
-             by this separate alias so hiding the icon cannot disable the app itself. -->
+        <activity
+            android:name=".HiddenEntryActivity"
+            android:exported="false" />
+
         <activity-alias
             android:name=".LauncherAlias"
             android:targetActivity=".MainActivity"
@@ -32,6 +34,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+
         <receiver
             android:name=".BlockerDeviceAdminReceiver"
             android:label="מגן התוכן"
@@ -43,6 +46,7 @@
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
         </receiver>
+
         <service
             android:name=".BlockerVpnService"
             android:exported="false"
