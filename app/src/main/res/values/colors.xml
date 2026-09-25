@@ -1,0 +1,7 @@
+<resources>
+    <color name="blocker_blue">#1565C0</color>
+    <color name="blocker_blue_dark">#0D47A1</color>
+    <color name="blocker_bg">#F5F8FC</color>
+    <color name="blocker_text">#102A43</color>
+    <color name="blocker_muted">#627D98</color>
+</resources>
