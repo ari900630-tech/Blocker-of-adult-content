@@ -10,12 +10,11 @@ import android.view.MotionEvent
 import android.widget.FrameLayout
 
 /**
- * Hidden entry screen used when the launcher icon is disabled.
- * There are no visible controls. The owner knows the secret location:
- * double-tap the bottom-right corner to open the main screen.
+ * Invisible launcher entry. The first tap opens this transparent activity;
+ * a second tap anywhere (for example the exact same spot) opens the app.
  */
 class HiddenEntryActivity : Activity() {
-    private var lastSecretTap = 0L
+    private var lastTap = 0L
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,25 +25,14 @@ class HiddenEntryActivity : Activity() {
             setOnTouchListener { _, event ->
                 if (event.action != MotionEvent.ACTION_UP) return@setOnTouchListener true
 
-                val width = resources.displayMetrics.widthPixels
-                val height = resources.displayMetrics.heightPixels
-                val density = resources.displayMetrics.density
-                val secretSize = (96 * density).toInt()
-
-                val inSecretArea =
-                    event.x >= width - secretSize &&
-                    event.y >= height - secretSize
-
-                if (inSecretArea) {
-                    val now = System.currentTimeMillis()
-                    if (now - lastSecretTap <= 900L) {
-                        lastSecretTap = 0L
-                        startActivity(Intent(this, MainActivity::class.java))
-                        finish()
-                    } else {
-                        lastSecretTap = now
-                        handler.postDelayed({ lastSecretTap = 0L }, 950L)
-                    }
+                val now = System.currentTimeMillis()
+                if (now - lastTap <= 900L) {
+                    lastTap = 0L
+                    startActivity(Intent(this@HiddenEntryActivity, MainActivity::class.java))
+                    finish()
+                } else {
+                    lastTap = now
+                    handler.postDelayed({ lastTap = 0L }, 950L)
                 }
                 true
             }

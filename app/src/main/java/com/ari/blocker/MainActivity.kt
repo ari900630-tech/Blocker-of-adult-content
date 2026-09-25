@@ -381,27 +381,44 @@ class MainActivity : Activity() {
     }
 
     private fun hideLauncherIcon() {
-        // Disable only the launcher alias. MainActivity stays enabled so the app
-        // remains openable from the protection notification and never gets routed
-        // into an uninstall/app-disabled flow by the launcher.
+        // Keep an invisible launcher slot instead of removing the entry.
+        // Double-tapping that invisible slot opens the app.
+        val visible = ComponentName(this, "com.ari.blocker.LauncherAlias")
+        val hidden = ComponentName(this, "com.ari.blocker.HiddenLauncherAlias")
+
         packageManager.setComponentEnabledSetting(
-            ComponentName(this, "com.ari.blocker.LauncherAlias"),
+            visible,
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
             PackageManager.DONT_KILL_APP
         )
+        packageManager.setComponentEnabledSetting(
+            hidden,
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+            PackageManager.DONT_KILL_APP
+        )
+
         AlertDialog.Builder(this)
             .setTitle("הסמל הוסתר")
-            .setMessage("סמל האפליקציה הוסר ממסך האפליקציות. ההגנה ממשיכה לפעול. כדי להחזיר את הסמל, פתח את האפליקציה דרך ההתראה של מגן התוכן.")
+            .setMessage("מגן התוכן נשאר באותו מקום במסך האפליקציות, אבל הסמל עצמו שקוף. לחץ פעמיים על המקום שלו כדי לפתוח את האפליקציה.")
             .setPositiveButton("אישור", null)
             .show()
     }
 
     private fun showLauncherIcon() {
+        val visible = ComponentName(this, "com.ari.blocker.LauncherAlias")
+        val hidden = ComponentName(this, "com.ari.blocker.HiddenLauncherAlias")
+
         packageManager.setComponentEnabledSetting(
-            ComponentName(this, "com.ari.blocker.LauncherAlias"),
+            hidden,
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+            PackageManager.DONT_KILL_APP
+        )
+        packageManager.setComponentEnabledSetting(
+            visible,
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
             PackageManager.DONT_KILL_APP
         )
+
         AlertDialog.Builder(this)
             .setTitle("הסמל הוחזר")
             .setMessage("סמל מגן התוכן זמין שוב במסך האפליקציות.")

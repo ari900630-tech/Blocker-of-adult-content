@@ -13,13 +13,8 @@
         android:roundIcon="@drawable/ic_blocker_shield"
         android:supportsRtl="true"
         android:theme="@style/Theme.Blocker">
-        <activity
-            android:name=".MainActivity"
-            android:exported="true" />
-
-        <activity
-            android:name=".HiddenEntryActivity"
-            android:exported="false" />
+        <activity android:name=".MainActivity" android:exported="true" />
+        <activity android:name=".HiddenEntryActivity" android:exported="false" />
 
         <activity-alias
             android:name=".LauncherAlias"
@@ -29,6 +24,20 @@
             android:icon="@drawable/ic_blocker_shield"
             android:roundIcon="@drawable/ic_blocker_shield"
             android:label="מגן התוכן">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".HiddenLauncherAlias"
+            android:targetActivity=".HiddenEntryActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@drawable/ic_transparent"
+            android:roundIcon="@drawable/ic_transparent"
+            android:label="">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
