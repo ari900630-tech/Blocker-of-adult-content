@@ -1,11 +1,26 @@
 # Blocker of Adult Content
 
-Android app that provides an on-device VPN-based protection layer for adult-content blocking.
+Android VPN-based content-filtering project.
+
+## Current implementation
+
+- Android VPN permission flow.
+- Foreground VPN service for long-running protection.
+- Central blocklist at `blocklist/domains.txt`.
+- GitHub Actions builds a debug APK and uploads it as `blocker-apk`.
+
+## Important limitation
+
+The current VPN service establishes the Android TUN interface but does **not yet implement packet forwarding or DNS interception**. Therefore this repository is a development baseline, not a finished 100% content blocker. A production release must add and test a real DNS/packet-forwarding engine before enabling the VPN by default.
+
+The APK cannot silently install itself on an Android phone. Android requires the user to approve the VPN connection and installation.
 
 ## Build
-Use the included GitHub Actions workflow. The generated APK is uploaded as a workflow artifact.
 
-## Important
-Android VPN traffic must be forwarded correctly to avoid breaking connectivity. This repository therefore starts with a safe VPN baseline rather than pretending that a non-forwarding tunnel is a complete blocker. A production implementation should use a tested packet-forwarding/DNS engine and a maintained blocklist.
+GitHub Actions runs:
 
-The app does not silently install or force-download an APK to a phone. Android and GitHub do not permit a repository workflow to silently install an APK on a user's device. After a successful build, download the APK artifact and install it with the user's approval.
+```
+gradle --no-daemon assembleDebug
+```
+
+The resulting APK is uploaded as a workflow artifact.
