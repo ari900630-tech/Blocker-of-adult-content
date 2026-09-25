@@ -66,7 +66,7 @@ object AppUpdater {
                         showError(activity, "לא ניתן לפתוח את קובץ העדכון.")
                     }
                 } catch (e: Exception) {
-                    showError(activity, "התקנת העדכון נכשלה: \${e.message ?: "שגיאה לא ידועה"}")
+                    showError(activity, "התקנת העדכון נכשלה: ${e.message ?: "שגיאה לא ידועה"}")
                 } finally {
                     try { activity.unregisterReceiver(this) } catch (_: Exception) {}
                 }
