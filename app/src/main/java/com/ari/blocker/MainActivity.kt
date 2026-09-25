@@ -115,6 +115,7 @@ class MainActivity : Activity() {
             val domain = input.text.toString().trim().lowercase()
             if (domain.matches(Regex("[a-z0-9.-]+")) && domain.contains(".")) {
                 getSharedPreferences("custom_blocks", MODE_PRIVATE).edit().putBoolean(domain, true).apply()
+                BlockerVpnService.reloadCustomBlocks()
                 AlertDialog.Builder(this).setMessage("הדומיין נוסף לחסימה.").setPositiveButton("אישור", null).show()
                 input.text.clear()
             } else {
