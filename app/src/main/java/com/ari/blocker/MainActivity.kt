@@ -151,9 +151,17 @@ class MainActivity : Activity() {
             if (!active) requestVpnPermission()
         }
         addButton("פתח חיפוש חדש") {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/")))
+            openProtectedSearch()
         }
         addButton("הסתר את סמל האפליקציה") { hideLauncherIcon() }
+    }
+
+    private fun openProtectedSearch() {
+        // Open Google through the app's protected search route.
+        // The SafeSearch URL parameter requests filtered results, while the
+        // app's DNS protection remains the network-level block layer.
+        val protectedSearch = Uri.parse("https://www.google.com/search?safe=active")
+        startActivity(Intent(Intent.ACTION_VIEW, protectedSearch))
     }
 
     private fun showBlocks() {
