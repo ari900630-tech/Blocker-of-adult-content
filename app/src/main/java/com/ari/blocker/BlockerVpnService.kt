@@ -12,7 +12,6 @@ import android.os.ParcelFileDescriptor
 import java.io.BufferedReader
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.InputStreamReader
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.HttpURLConnection
@@ -28,17 +27,16 @@ class BlockerVpnService : VpnService() {
         private const val NOTIFICATION_ID = 1001
         private const val DNS_IP = "10.10.0.1"
         private const val UPSTREAM_DNS = "1.1.1.1"
-        private const val ACTION_RELOAD_CUSTOM_BLOCKS =
-            "com.ari.blocker.action.RELOAD_CUSTOM_BLOCKS"
+        private const val BLOCKLIST_URL =
+            "https://raw.githubusercontent.com/ari900630-tech/Blocker-of-adult-content/main/blocklist/domains.txt"
 
-        @Volatile
-        private var instance: BlockerVpnService? = null
+        @Volatile private var instance: BlockerVpnService? = null
+        @Volatile var isProtectionActive: Boolean = false
+            private set
 
         fun reloadCustomBlocks() {
             instance?.loadCustomBlocks()
         }
-        private const val BLOCKLIST_URL =
-            "https://raw.githubusercontent.com/ari900630-tech/Blocker-of-adult-content/main/blocklist/domains.txt"
     }
 
     @Volatile private var running = false
@@ -51,14 +49,10 @@ class BlockerVpnService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_RELOAD_CUSTOM_BLOCKS) {
-            loadCustomBlocks()
-            return START_STICKY
-        }
-
         startProtectionForeground()
         if (!running) {
             running = true
+            isProtectionActive = true
             Thread {
                 loadBlocklist()
                 runDnsVpn()
@@ -71,7 +65,7 @@ class BlockerVpnService : VpnService() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Protection", NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel(CHANNEL_ID, "מגן התוכן", NotificationManager.IMPORTANCE_LOW)
             )
         }
 
@@ -81,8 +75,8 @@ class BlockerVpnService : VpnService() {
         )
 
         val notification = Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Blocker protection is active")
-            .setContentText("DNS filtering is running.")
+            .setContentTitle("מגן התוכן פעיל")
+            .setContentText("סינון DNS פועל")
             .setSmallIcon(R.drawable.ic_blocker_shield)
             .setContentIntent(openIntent)
             .setOngoing(true)
@@ -93,15 +87,11 @@ class BlockerVpnService : VpnService() {
 
     private fun loadBlocklist() {
         loadCustomBlocks()
-
         try {
             assets.open("domains.txt").use { input ->
-                BufferedReader(InputStreamReader(input)).useLines { lines ->
-                    lines.forEach { addDomain(it) }
-                }
+                BufferedReader(InputStreamReader(input)).useLines { lines -> lines.forEach { addDomain(it) } }
             }
-        } catch (_: Exception) {
-        }
+        } catch (_: Exception) {}
 
         Thread {
             try {
@@ -114,21 +104,17 @@ class BlockerVpnService : VpnService() {
                     }
                 }
                 connection.disconnect()
-            } catch (_: Exception) {
-            }
+            } catch (_: Exception) {}
         }.start()
     }
 
     private fun loadCustomBlocks() {
-        val prefs = getSharedPreferences("custom_blocks", MODE_PRIVATE)
-        prefs.all.keys.forEach { addDomain(it) }
+        getSharedPreferences("custom_blocks", MODE_PRIVATE).all.keys.forEach { addDomain(it) }
     }
 
     private fun addDomain(raw: String) {
         val value = raw.trim().lowercase(Locale.US)
-        if (value.isNotEmpty() && !value.startsWith("#")) {
-            blockedDomains.add(value.removePrefix(".").removeSuffix("."))
-        }
+        if (value.isNotEmpty() && !value.startsWith("#")) blockedDomains.add(value.removePrefix(".").removeSuffix("."))
     }
 
     private fun isBlocked(domain: String): Boolean {
@@ -144,13 +130,13 @@ class BlockerVpnService : VpnService() {
 
     private fun runDnsVpn() {
         try {
+            // DNS-only VPN: keep normal Chrome/Internet traffic outside the VPN.
+            // This avoids the previous bug where non-DNS packets were dropped.
             vpn = Builder()
-                .setSession("Blocker DNS")
+                .setSession("מגן התוכן - DNS")
                 .setMtu(1500)
                 .addAddress("10.10.0.2", 32)
-                // Route all IPv4 traffic through the VPN. This prevents apps from
-                // bypassing the DNS filter by using their own DNS endpoint.
-                .addRoute("0.0.0.0", 0)
+                .addRoute("10.10.0.1", 32)
                 .addDnsServer(DNS_IP)
                 .establish()
 
@@ -161,8 +147,7 @@ class BlockerVpnService : VpnService() {
             while (running) {
                 val buffer = ByteArray(32767)
                 val length = input.read(buffer)
-                if (length <= 0) continue
-                handlePacket(buffer, length, output)
+                if (length > 0) handlePacket(buffer, length, output)
             }
         } catch (_: Exception) {
             if (running) stopSelf()
@@ -172,20 +157,13 @@ class BlockerVpnService : VpnService() {
     private fun handlePacket(packet: ByteArray, length: Int, output: FileOutputStream) {
         if (length < 20) return
         val version = (packet[0].toInt() ushr 4) and 0x0F
-        when (version) {
-            4 -> handleIpv4Udp(packet, length, output)
-            // IPv6 is deliberately dropped. Otherwise an app could use IPv6
-            // connectivity to bypass the IPv4 DNS filter.
-            6 -> return
-        }
+        if (version == 4) handleIpv4Udp(packet, length, output)
     }
 
     private fun handleIpv4Udp(packet: ByteArray, length: Int, output: FileOutputStream) {
         val ihl = (packet[0].toInt() and 0x0F) * 4
         if (ihl < 20 || length < ihl + 8) return
-
-        val protocol = packet[9].toInt() and 0xFF
-        if (protocol != 17) return
+        if ((packet[9].toInt() and 0xFF) != 17) return
 
         val udpOffset = ihl
         val srcPort = u16(packet, udpOffset)
@@ -193,21 +171,11 @@ class BlockerVpnService : VpnService() {
         val udpLength = u16(packet, udpOffset + 4)
         if (dstPort != 53 || udpLength < 8 || udpOffset + udpLength > length) return
 
-        val dnsLength = udpLength - 8
-        val dnsQuery = packet.copyOfRange(udpOffset + 8, udpOffset + 8 + dnsLength)
+        val dnsQuery = packet.copyOfRange(udpOffset + 8, udpOffset + udpLength)
         val domain = readDnsQuestionName(dnsQuery) ?: return
+        val responseDns = if (isBlocked(domain)) blockedDnsResponse(dnsQuery) else forwardDns(dnsQuery) ?: return
 
-        val responseDns = if (isBlocked(domain)) {
-            blockedDnsResponse(dnsQuery)
-        } else {
-            forwardDns(dnsQuery) ?: return
-        }
-
-        val response = buildIpv4UdpResponse(
-            request = packet,
-            requestSourcePort = srcPort,
-            dnsResponse = responseDns
-        )
+        val response = buildIpv4UdpResponse(packet, srcPort, responseDns)
         output.write(response)
         output.flush()
     }
@@ -224,8 +192,7 @@ class BlockerVpnService : VpnService() {
             labels.add(String(data, offset, size, Charsets.US_ASCII))
             offset += size
         }
-        if (labels.isEmpty()) return null
-        return labels.joinToString(".").lowercase(Locale.US)
+        return if (labels.isEmpty()) null else labels.joinToString(".").lowercase(Locale.US)
     }
 
     private fun blockedDnsResponse(query: ByteArray): ByteArray {
@@ -253,35 +220,25 @@ class BlockerVpnService : VpnService() {
                 socket.receive(packet)
                 packet.data.copyOf(packet.length)
             }
-        } catch (_: Exception) {
-            null
-        }
+        } catch (_: Exception) { null }
     }
 
-    private fun buildIpv4UdpResponse(
-        request: ByteArray,
-        requestSourcePort: Int,
-        dnsResponse: ByteArray
-    ): ByteArray {
+    private fun buildIpv4UdpResponse(request: ByteArray, requestSourcePort: Int, dnsResponse: ByteArray): ByteArray {
         val totalLength = 20 + 8 + dnsResponse.size
         val response = ByteArray(totalLength)
-
         response[0] = 0x45
         putU16(response, 2, totalLength)
         putU16(response, 4, u16(request, 4))
         response[8] = 64
         response[9] = 17
-
         System.arraycopy(request, 16, response, 12, 4)
         System.arraycopy(request, 12, response, 16, 4)
-
         val udp = 20
         putU16(response, udp, 53)
         putU16(response, udp + 2, requestSourcePort)
         putU16(response, udp + 4, 8 + dnsResponse.size)
         putU16(response, udp + 6, 0)
         System.arraycopy(dnsResponse, 0, response, udp + 8, dnsResponse.size)
-
         putU16(response, 10, checksum(response, 0, 20))
         return response
     }
@@ -307,8 +264,18 @@ class BlockerVpnService : VpnService() {
         return sum.inv().toInt() and 0xFFFF
     }
 
+    override fun onRevoke() {
+        running = false
+        isProtectionActive = false
+        vpn?.close()
+        vpn = null
+        stopSelf()
+        super.onRevoke()
+    }
+
     override fun onDestroy() {
         running = false
+        isProtectionActive = false
         vpn?.close()
         vpn = null
         instance = null
