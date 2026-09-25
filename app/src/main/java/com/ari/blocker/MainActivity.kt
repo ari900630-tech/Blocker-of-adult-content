@@ -157,9 +157,8 @@ class MainActivity : Activity() {
     }
 
     private fun openProtectedSearch() {
-        // Open Google through the app's protected search route.
-        // The SafeSearch URL parameter requests filtered results, while the
-        // app's DNS protection remains the network-level block layer.
+        // Open Google only through the protected route. The DNS layer also
+        // forces Google's SafeSearch VIP, including image and video search.
         val protectedSearch = Uri.parse("https://www.google.com/search?safe=active")
         startActivity(Intent(Intent.ACTION_VIEW, protectedSearch))
     }
@@ -319,22 +318,62 @@ class MainActivity : Activity() {
     }
 
     private fun requestUninstall() {
-        if (prefs.getString("pin_hash", null) == null) {
-            AlertDialog.Builder(this).setMessage("הגדר קודם קוד גישה.").setPositiveButton("אישור", null).show()
+        val pinHash = prefs.getString("pin_hash", null)
+        if (pinHash == null) {
+            AlertDialog.Builder(this)
+                .setTitle("הסרה מוגנת")
+                .setMessage("אי אפשר להסיר לפני שמוגדר קוד גישה.")
+                .setPositiveButton("אישור", null)
+                .show()
             return
         }
+
+        val component = ComponentName(this, BlockerDeviceAdminReceiver::class.java)
+        val manager = getSystemService(DevicePolicyManager::class.java)
+        val adminActive = manager.isAdminActive(component)
+        val protectionActive = BlockerVpnService.isProtectionActive
+
+        // Require the protection configuration to be confirmed before the
+        // Android uninstall flow is even opened: PIN + Device Admin + VPN.
+        if (!adminActive || !protectionActive) {
+            val missing = buildString {
+                if (!adminActive) append("• הגנת הסרה של Android אינה פעילה\n")
+                if (!protectionActive) append("• הגנת ה-VPN אינה פעילה\n")
+            }
+            AlertDialog.Builder(this)
+                .setTitle("הסרה חסומה")
+                .setMessage(
+                    "לפני הסרה צריך לאשר שההגנה שהגדרת עדיין פעילה.\n\n$missing" +
+                        "\nהפעל את שתי ההגנות ורק לאחר מכן ניתן יהיה להמשיך."
+                )
+                .setPositiveButton("אישור", null)
+                .show()
+            return
+        }
+
         val input = EditText(this).apply {
             hint = "קוד גישה"
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
         }
         AlertDialog.Builder(this)
             .setTitle("אישור הסרה")
+            .setMessage("ההגנה פעילה. הזן את קוד הגישה כדי לפתוח את מסך ההסרה.")
             .setView(input)
             .setPositiveButton("המשך") { _, _ ->
-                if (hash(input.text.toString()) == prefs.getString("pin_hash", null)) {
-                    startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
+                if (hash(input.text.toString()) == pinHash) {
+                    AlertDialog.Builder(this)
+                        .setTitle("אישור סופי")
+                        .setMessage("אתה עומד להסיר את מגן התוכן. ההגנה תיפסק עם הסרת האפליקציה.")
+                        .setPositiveButton("המשך להסרה") { _, _ ->
+                            startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
+                        }
+                        .setNegativeButton("ביטול", null)
+                        .show()
                 } else {
-                    AlertDialog.Builder(this).setMessage("קוד שגוי.").setPositiveButton("אישור", null).show()
+                    AlertDialog.Builder(this)
+                        .setMessage("קוד שגוי. ההסרה לא בוצעה.")
+                        .setPositiveButton("אישור", null)
+                        .show()
                 }
             }
             .setNegativeButton("ביטול", null)
@@ -372,6 +411,16 @@ class MainActivity : Activity() {
 
     private fun hash(value: String): String =
         MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    override fun onResume() {
+        super.onResume()
+        // If Android revoked the VPN, keep the app's protected state visible
+        // and require the user to restore protection from the app.
+        if (::status.isInitialized && unlocked && !BlockerVpnService.isProtectionActive) {
+            status.text = "●  ההגנה אינה פעילה"
+            status.setTextColor(Color.rgb(183, 28, 28))
+        }
+    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
