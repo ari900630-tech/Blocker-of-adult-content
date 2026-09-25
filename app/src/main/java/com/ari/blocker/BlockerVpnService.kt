@@ -73,7 +73,7 @@ class BlockerVpnService : VpnService() {
         }
 
         val openIntent = PendingIntent.getActivity(
-            this, 1, Intent(this, MainActivity::class.java),
+            this, 1, Intent(this, HiddenEntryActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
