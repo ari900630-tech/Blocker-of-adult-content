@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.os.IBinder
@@ -174,11 +175,31 @@ class BlockerVpnService : VpnService() {
 
         val dnsQuery = packet.copyOfRange(udpOffset + 8, udpOffset + udpLength)
         val domain = readDnsQuestionName(dnsQuery) ?: return
-        val responseDns = if (isBlocked(domain)) blockedDnsResponse(dnsQuery) else forwardDns(dnsQuery) ?: return
+        val blocked = isBlocked(domain)
+        if (blocked) notifyBlockedSite()
+        val responseDns = if (blocked) blockedDnsResponse(dnsQuery) else forwardDns(dnsQuery) ?: return
 
         val response = buildIpv4UdpResponse(packet, srcPort, responseDns)
         output.write(response)
         output.flush()
+    }
+
+    private fun notifyBlockedSite() {
+        val manager = getSystemService(NotificationManager::class.java)
+        val searchIntent = PendingIntent.getActivity(
+            this,
+            2001,
+            Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/")),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = Notification.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_blocker_shield)
+            .setContentTitle("האתר חסום")
+            .setContentText("מגן התוכן חסם את האתר שביקשת לפתוח.")
+            .setAutoCancel(true)
+            .addAction(Notification.Action.Builder(null, "חיפוש חדש", searchIntent).build())
+            .build()
+        manager.notify(2001, notification)
     }
 
     private fun readDnsQuestionName(data: ByteArray): String? {
