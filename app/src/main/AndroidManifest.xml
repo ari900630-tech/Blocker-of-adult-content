@@ -8,6 +8,8 @@
     <application
         android:allowBackup="true"
         android:label="Blocker"
+        android:icon="@drawable/ic_blocker_shield"
+        android:roundIcon="@drawable/ic_blocker_shield"
         android:supportsRtl="true"
         android:theme="@style/Theme.Blocker">
         <activity android:name=".MainActivity" android:exported="true">
