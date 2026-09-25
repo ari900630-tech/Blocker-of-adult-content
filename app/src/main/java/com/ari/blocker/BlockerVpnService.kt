@@ -44,6 +44,7 @@ class BlockerVpnService : VpnService() {
     @Volatile private var running = false
     private var vpn: ParcelFileDescriptor? = null
     private val blockedDomains = CopyOnWriteArraySet<String>()
+    @Volatile private var safeSearchIps: List<ByteArray> = emptyList()
 
     override fun onCreate() {
         super.onCreate()
@@ -142,6 +143,10 @@ class BlockerVpnService : VpnService() {
                 .addDnsServer(DNS_IP)
                 .establish()
 
+            // Resolve Google's SafeSearch VIP through the protected upstream
+            // DNS before handling browser queries.
+            safeSearchIps = resolveARecords("forcesafesearch.google.com")
+
             val descriptor = vpn ?: return
             val input = FileInputStream(descriptor.fileDescriptor)
             val output = FileOutputStream(descriptor.fileDescriptor)
@@ -177,7 +182,16 @@ class BlockerVpnService : VpnService() {
         val domain = readDnsQuestionName(dnsQuery) ?: return
         val blocked = isBlocked(domain)
         if (blocked) notifyBlockedSite()
-        val responseDns = if (blocked) blockedDnsResponse(dnsQuery) else forwardDns(dnsQuery) ?: return
+
+        // Force Google Search, Images and Videos through Google's SafeSearch VIP.
+        // This is stronger than a URL-only "safe=active" parameter because the
+        // DNS mapping is applied before the browser connects over HTTPS.
+        val forceSafe = isGoogleSearchHost(domain)
+        val responseDns = when {
+            blocked -> blockedDnsResponse(dnsQuery)
+            forceSafe && safeSearchIps.isNotEmpty() -> forcedSafeSearchDnsResponse(dnsQuery, safeSearchIps)
+            else -> forwardDns(dnsQuery)
+        } ?: return
 
         val response = buildIpv4UdpResponse(packet, srcPort, responseDns)
         output.write(response)
@@ -227,6 +241,111 @@ class BlockerVpnService : VpnService() {
         response[9] = 0
         response[10] = 0
         response[11] = 0
+        return response
+    }
+
+    private fun isGoogleSearchHost(domain: String): Boolean {
+        val d = domain.lowercase(Locale.US).trimEnd('.')
+        return d.startsWith("www.google.") && d.substringAfter("www.google.").isNotEmpty()
+    }
+
+    private fun resolveARecords(host: String): List<ByteArray> {
+        return try {
+            val query = buildDnsAQuery(host)
+            val response = forwardDns(query) ?: return emptyList()
+            parseARecords(response)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun buildDnsAQuery(host: String): ByteArray {
+        val labels = host.trimEnd('.').split('.')
+        val query = ByteArray(12 + labels.sumOf { it.length + 1 } + 1)
+        query[0] = 0x42
+        query[1] = 0x42
+        query[2] = 0x01
+        query[5] = 0x01
+        var offset = 12
+        labels.forEach { label ->
+            query[offset++] = label.length.toByte()
+            val bytes = label.toByteArray(Charsets.US_ASCII)
+            System.arraycopy(bytes, 0, query, offset, bytes.size)
+            offset += bytes.size
+        }
+        query[offset] = 0
+        query[offset + 1] = 0
+        query[offset + 2] = 1
+        query[offset + 3] = 0
+        query[offset + 4] = 1
+        return query
+    }
+
+    private fun parseARecords(response: ByteArray): List<ByteArray> {
+        if (response.size < 12) return emptyList()
+        val answerCount = u16(response, 6)
+        var offset = 12
+        offset = skipDnsName(response, offset) ?: return emptyList()
+        if (offset + 4 > response.size) return emptyList()
+        offset += 4
+
+        val ips = ArrayList<ByteArray>()
+        repeat(answerCount) {
+            offset = skipDnsName(response, offset) ?: return@repeat
+            if (offset + 10 > response.size) return@repeat
+            val type = u16(response, offset)
+            val dataLength = u16(response, offset + 8)
+            offset += 10
+            if (offset + dataLength > response.size) return@repeat
+            if (type == 1 && dataLength == 4) {
+                ips.add(response.copyOfRange(offset, offset + 4))
+            }
+            offset += dataLength
+        }
+        return ips
+    }
+
+    private fun skipDnsName(data: ByteArray, start: Int): Int? {
+        var offset = start
+        var jumps = 0
+        while (offset < data.size) {
+            val size = data[offset].toInt() and 0xFF
+            if (size == 0) return offset + 1
+            if ((size and 0xC0) == 0xC0) {
+                if (offset + 1 >= data.size) return null
+                return offset + 2
+            }
+            if (size > 63 || offset + 1 + size > data.size) return null
+            offset += 1 + size
+            if (++jumps > 128) return null
+        }
+        return null
+    }
+
+    private fun forcedSafeSearchDnsResponse(query: ByteArray, ips: List<ByteArray>): ByteArray {
+        val response = ByteArray(query.size + ips.size * 16)
+        System.arraycopy(query, 0, response, 0, query.size)
+        response[2] = (response[2].toInt() or 0x80).toByte()
+        response[3] = (response[3].toInt() and 0xF0).toByte()
+        putU16(response, 6, ips.size)
+        putU16(response, 8, 0)
+        putU16(response, 10, 0)
+
+        var offset = query.size
+        ips.forEach { ip ->
+            response[offset++] = 0xC0.toByte()
+            response[offset++] = 0x0C
+            putU16(response, offset, 1)
+            offset += 2
+            putU16(response, offset, 1)
+            offset += 2
+            putU16(response, offset, 300)
+            offset += 2
+            putU16(response, offset, 4)
+            offset += 2
+            System.arraycopy(ip, 0, response, offset, 4)
+            offset += 4
+        }
         return response
     }
 
