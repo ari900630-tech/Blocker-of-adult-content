@@ -31,21 +31,15 @@ class BlockerVpnService : VpnService() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "Protection",
-                    NotificationManager.IMPORTANCE_LOW
-                )
+                NotificationChannel(CHANNEL_ID, "Protection", NotificationManager.IMPORTANCE_LOW)
             )
         }
-
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("Blocker protection is active")
             .setContentText("Adult-content filtering is running.")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setOngoing(true)
             .build()
-
         startForeground(NOTIFICATION_ID, notification)
     }
 
@@ -59,8 +53,8 @@ class BlockerVpnService : VpnService() {
                 .establish()
 
             // Safe baseline: the VPN interface is established.
-            // A full packet-forwarding/DNS engine is required before this can
-            // be advertised as a production content filter.
+            // A real packet-forwarding/DNS engine is still required for
+            // production-grade filtering.
             Thread.sleep(Long.MAX_VALUE)
         } catch (_: Exception) {
             stopSelf()
