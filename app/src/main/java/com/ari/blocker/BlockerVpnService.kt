@@ -52,18 +52,12 @@ class BlockerVpnService : VpnService() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "Protection",
-                    NotificationManager.IMPORTANCE_LOW
-                )
+                NotificationChannel(CHANNEL_ID, "Protection", NotificationManager.IMPORTANCE_LOW)
             )
         }
 
         val openIntent = PendingIntent.getActivity(
-            this,
-            1,
-            Intent(this, MainActivity::class.java),
+            this, 1, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -93,7 +87,6 @@ class BlockerVpnService : VpnService() {
                 val connection = URL(BLOCKLIST_URL).openConnection() as HttpURLConnection
                 connection.connectTimeout = 8000
                 connection.readTimeout = 8000
-                connection.requestMethod = "GET"
                 if (connection.responseCode in 200..299) {
                     BufferedReader(InputStreamReader(connection.inputStream)).useLines { lines ->
                         lines.forEach { addDomain(it) }
@@ -101,7 +94,6 @@ class BlockerVpnService : VpnService() {
                 }
                 connection.disconnect()
             } catch (_: Exception) {
-                // Keep the bundled list when the central list is unavailable.
             }
         }.start()
     }
@@ -128,8 +120,11 @@ class BlockerVpnService : VpnService() {
         try {
             vpn = Builder()
                 .setSession("Blocker DNS")
+                .setMtu(1500)
                 .addAddress("10.10.0.2", 32)
-                .addRoute(DNS_IP, 32)
+                // Route all IPv4 traffic through the VPN. This prevents apps from
+                // bypassing the DNS filter by using their own DNS endpoint.
+                .addRoute("0.0.0.0", 0)
                 .addDnsServer(DNS_IP)
                 .establish()
 
@@ -141,18 +136,27 @@ class BlockerVpnService : VpnService() {
                 val buffer = ByteArray(32767)
                 val length = input.read(buffer)
                 if (length <= 0) continue
-                handleIpv4Udp(buffer, length, output)
+                handlePacket(buffer, length, output)
             }
         } catch (_: Exception) {
             if (running) stopSelf()
         }
     }
 
-    private fun handleIpv4Udp(packet: ByteArray, length: Int, output: FileOutputStream) {
-        if (length < 28) return
+    private fun handlePacket(packet: ByteArray, length: Int, output: FileOutputStream) {
+        if (length < 20) return
         val version = (packet[0].toInt() ushr 4) and 0x0F
+        when (version) {
+            4 -> handleIpv4Udp(packet, length, output)
+            // IPv6 is deliberately dropped. Otherwise an app could use IPv6
+            // connectivity to bypass the IPv4 DNS filter.
+            6 -> return
+        }
+    }
+
+    private fun handleIpv4Udp(packet: ByteArray, length: Int, output: FileOutputStream) {
         val ihl = (packet[0].toInt() and 0x0F) * 4
-        if (version != 4 || ihl < 20 || length < ihl + 8) return
+        if (ihl < 20 || length < ihl + 8) return
 
         val protocol = packet[9].toInt() and 0xFF
         if (protocol != 17) return
@@ -175,8 +179,6 @@ class BlockerVpnService : VpnService() {
 
         val response = buildIpv4UdpResponse(
             request = packet,
-            requestLength = length,
-            requestIpHeaderLength = ihl,
             requestSourcePort = srcPort,
             dnsResponse = responseDns
         )
@@ -202,8 +204,8 @@ class BlockerVpnService : VpnService() {
 
     private fun blockedDnsResponse(query: ByteArray): ByteArray {
         val response = query.copyOf()
-        response[2] = (response[2].toInt() or 0x80 or 0x04).toByte() // QR + AA
-        response[3] = ((response[3].toInt() and 0xF0) or 0x03).toByte() // NXDOMAIN
+        response[2] = (response[2].toInt() or 0x80 or 0x04).toByte()
+        response[3] = ((response[3].toInt() and 0xF0) or 0x03).toByte()
         response[6] = 0
         response[7] = 0
         response[8] = 0
@@ -232,8 +234,6 @@ class BlockerVpnService : VpnService() {
 
     private fun buildIpv4UdpResponse(
         request: ByteArray,
-        requestLength: Int,
-        requestIpHeaderLength: Int,
         requestSourcePort: Int,
         dnsResponse: ByteArray
     ): ByteArray {
@@ -241,10 +241,8 @@ class BlockerVpnService : VpnService() {
         val response = ByteArray(totalLength)
 
         response[0] = 0x45
-        response[1] = 0
         putU16(response, 2, totalLength)
         putU16(response, 4, u16(request, 4))
-        putU16(response, 6, 0)
         response[8] = 64
         response[9] = 17
 
