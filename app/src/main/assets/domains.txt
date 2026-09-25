@@ -1,0 +1,17 @@
+# Bundled fallback blocklist. The app also refreshes from GitHub.
+pornhub.com
+www.pornhub.com
+xvideos.com
+www.xvideos.com
+xnxx.com
+www.xnxx.com
+xhamster.com
+www.xhamster.com
+redtube.com
+www.redtube.com
+youporn.com
+www.youporn.com
+hentaihaven.xxx
+porn.com
+spankbang.com
+brazzers.com
