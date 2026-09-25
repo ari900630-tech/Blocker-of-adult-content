@@ -28,6 +28,15 @@ class BlockerVpnService : VpnService() {
         private const val NOTIFICATION_ID = 1001
         private const val DNS_IP = "10.10.0.1"
         private const val UPSTREAM_DNS = "1.1.1.1"
+        private const val ACTION_RELOAD_CUSTOM_BLOCKS =
+            "com.ari.blocker.action.RELOAD_CUSTOM_BLOCKS"
+
+        @Volatile
+        private var instance: BlockerVpnService? = null
+
+        fun reloadCustomBlocks() {
+            instance?.loadCustomBlocks()
+        }
         private const val BLOCKLIST_URL =
             "https://raw.githubusercontent.com/ari900630-tech/Blocker-of-adult-content/main/blocklist/domains.txt"
     }
@@ -36,7 +45,17 @@ class BlockerVpnService : VpnService() {
     private var vpn: ParcelFileDescriptor? = null
     private val blockedDomains = CopyOnWriteArraySet<String>()
 
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_RELOAD_CUSTOM_BLOCKS) {
+            loadCustomBlocks()
+            return START_STICKY
+        }
+
         startProtectionForeground()
         if (!running) {
             running = true
@@ -73,6 +92,8 @@ class BlockerVpnService : VpnService() {
     }
 
     private fun loadBlocklist() {
+        loadCustomBlocks()
+
         try {
             assets.open("domains.txt").use { input ->
                 BufferedReader(InputStreamReader(input)).useLines { lines ->
@@ -96,6 +117,11 @@ class BlockerVpnService : VpnService() {
             } catch (_: Exception) {
             }
         }.start()
+    }
+
+    private fun loadCustomBlocks() {
+        val prefs = getSharedPreferences("custom_blocks", MODE_PRIVATE)
+        prefs.all.keys.forEach { addDomain(it) }
     }
 
     private fun addDomain(raw: String) {
@@ -285,6 +311,7 @@ class BlockerVpnService : VpnService() {
         running = false
         vpn?.close()
         vpn = null
+        instance = null
         super.onDestroy()
     }
 
