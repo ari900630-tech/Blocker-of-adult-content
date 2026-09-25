@@ -14,7 +14,7 @@ import android.provider.Settings
 
 object AppUpdater {
     private const val APK_URL =
-        "https://github.com/ari900630-tech/Blocker-of-adult-content/releases/latest/download/app-release.apk"
+        "https://github.com/ari900630-tech/Blocker-of-adult-content/releases/latest/download/app-latest.apk"
 
     fun downloadAndInstall(activity: Activity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
