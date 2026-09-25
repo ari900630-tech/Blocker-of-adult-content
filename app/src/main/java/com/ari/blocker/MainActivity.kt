@@ -381,19 +381,32 @@ class MainActivity : Activity() {
     }
 
     private fun hideLauncherIcon() {
+        // Disable only the launcher alias. MainActivity stays enabled so the app
+        // remains openable from the protection notification and never gets routed
+        // into an uninstall/app-disabled flow by the launcher.
         packageManager.setComponentEnabledSetting(
-            ComponentName(this, MainActivity::class.java),
+            ComponentName(this, "com.ari.blocker.LauncherAlias"),
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
             PackageManager.DONT_KILL_APP
         )
+        AlertDialog.Builder(this)
+            .setTitle("הסמל הוסתר")
+            .setMessage("סמל האפליקציה הוסר ממסך האפליקציות. ההגנה ממשיכה לפעול. כדי להחזיר את הסמל, פתח את האפליקציה דרך ההתראה של מגן התוכן.")
+            .setPositiveButton("אישור", null)
+            .show()
     }
 
     private fun showLauncherIcon() {
         packageManager.setComponentEnabledSetting(
-            ComponentName(this, MainActivity::class.java),
+            ComponentName(this, "com.ari.blocker.LauncherAlias"),
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
             PackageManager.DONT_KILL_APP
         )
+        AlertDialog.Builder(this)
+            .setTitle("הסמל הוחזר")
+            .setMessage("סמל מגן התוכן זמין שוב במסך האפליקציות.")
+            .setPositiveButton("אישור", null)
+            .show()
     }
 
     private fun requestNotificationPermissionIfNeeded() {
