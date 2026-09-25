@@ -57,21 +57,24 @@ jobs:
           VERSION_NAME: 1.0.${{ github.run_number }}
         run: gradle --no-daemon assembleDebug
 
+      - name: Prepare updater APK
+        run: |
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/build/outputs/apk/release/app-release.apk app-latest.apk
+          else
+            cp app/build/outputs/apk/debug/app-debug.apk app-latest.apk
+          fi
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: blocker-apk
-          path: app/build/outputs/apk/**/*.apk
+          path: app-latest.apk
 
       - name: Publish latest release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-            APK_PATH=app/build/outputs/apk/release/app-release.apk
-          else
-            APK_PATH=app/build/outputs/apk/debug/app-debug.apk
-          fi
-          gh release create "v1.0.${{ github.run_number }}" "$APK_PATH" \
+          gh release create "v1.0.${{ github.run_number }}" app-latest.apk \
             --title "מגן התוכן ${{ github.run_number }}" \
             --generate-notes
