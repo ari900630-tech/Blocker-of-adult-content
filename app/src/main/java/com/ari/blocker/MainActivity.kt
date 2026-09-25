@@ -131,6 +131,7 @@ class MainActivity : Activity() {
         addButton("הגדר / שנה קוד גישה", Color.rgb(21,101,192)) { setPin() }
         addButton("הסרת האפליקציה", Color.rgb(183,28,28)) { requestUninstall() }
         addButton("הצג את סמל האפליקציה") { showLauncherIcon() }
+        addButton("עדכון האפליקציה", Color.rgb(46,125,50)) { AppUpdater.downloadAndInstall(this) }
     }
 
     private fun addTitle(text: String) {
