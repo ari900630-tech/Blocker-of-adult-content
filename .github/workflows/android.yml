@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      HAS_SIGNING_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,14 +33,14 @@ jobs:
           gradle-version: "8.10"
 
       - name: Restore release signing key
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: env.HAS_SIGNING_KEY != ''
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release.keystore
 
       - name: Build signed release APK
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: env.HAS_SIGNING_KEY != ''
         env:
           VERSION_CODE: ${{ github.run_number }}
           VERSION_NAME: 1.0.${{ github.run_number }}
@@ -49,7 +51,7 @@ jobs:
         run: gradle --no-daemon assembleRelease
 
       - name: Build debug APK (temporary fallback)
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 == '' }}
+        if: env.HAS_SIGNING_KEY == ''
         env:
           VERSION_CODE: ${{ github.run_number }}
           VERSION_NAME: 1.0.${{ github.run_number }}
