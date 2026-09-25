@@ -13,12 +13,25 @@
         android:roundIcon="@drawable/ic_blocker_shield"
         android:supportsRtl="true"
         android:theme="@style/Theme.Blocker">
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true" />
+
+        <!-- Keep MainActivity enabled at all times. The launcher icon is controlled
+             by this separate alias so hiding the icon cannot disable the app itself. -->
+        <activity-alias
+            android:name=".LauncherAlias"
+            android:targetActivity=".MainActivity"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@drawable/ic_blocker_shield"
+            android:roundIcon="@drawable/ic_blocker_shield"
+            android:label="מגן התוכן">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
         <receiver
             android:name=".BlockerDeviceAdminReceiver"
             android:label="מגן התוכן"
