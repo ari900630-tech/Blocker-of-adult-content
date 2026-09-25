@@ -14,7 +14,7 @@ import android.provider.Settings
 
 object AppUpdater {
     private const val APK_URL =
-        "https://github.com/ari900630-tech/Blocker-of-adult-content/releases/latest/download/app-debug.apk"
+        "https://github.com/ari900630-tech/Blocker-of-adult-content/releases/latest/download/app-release.apk"
 
     fun downloadAndInstall(activity: Activity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
@@ -27,7 +27,7 @@ object AppUpdater {
                     activity.startActivity(
                         Intent(
                             Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                            Uri.parse("package:\${activity.packageName}")
+                            Uri.parse("package:${activity.packageName}")
                         )
                     )
                 }
