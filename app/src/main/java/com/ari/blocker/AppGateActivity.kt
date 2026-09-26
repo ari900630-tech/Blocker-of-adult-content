@@ -33,6 +33,10 @@ class AppGateActivity : Activity() {
         showGate()
     }
 
+    override fun onBackPressed() {
+        // Do not reveal the protected app by pressing Back.
+    }
+
     private fun showGate() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
