@@ -52,6 +52,7 @@ class BlockerVpnService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        getSharedPreferences("settings", MODE_PRIVATE).edit().putBoolean("protection_enabled", true).apply()
         startProtectionForeground()
         if (!running) {
             running = true
@@ -406,6 +407,7 @@ class BlockerVpnService : VpnService() {
     }
 
     override fun onRevoke() {
+        getSharedPreferences("settings", MODE_PRIVATE).edit().putBoolean("protection_enabled", false).apply()
         running = false
         isProtectionActive = false
         vpn?.close()
