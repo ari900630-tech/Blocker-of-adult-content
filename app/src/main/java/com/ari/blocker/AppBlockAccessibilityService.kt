@@ -8,6 +8,16 @@ class AppBlockAccessibilityService : AccessibilityService() {
     private var unlockedPackage: String? = null
     private var gateLaunchAt = 0L
 
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        AppBlockAccessibilityServiceHolder.service = this
+    }
+
+    override fun onDestroy() {
+        AppBlockAccessibilityServiceHolder.service = null
+        super.onDestroy()
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val pkg = event?.packageName?.toString() ?: return
         if (pkg == packageName) return
