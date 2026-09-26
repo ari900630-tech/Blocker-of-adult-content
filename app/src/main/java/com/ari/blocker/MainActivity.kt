@@ -3,10 +3,8 @@ package com.ari.blocker
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
-import android.app.admin.DeviceAdminReceiver
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -18,6 +16,8 @@ import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
+import android.view.KeyEvent
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -35,48 +35,43 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildShell()
-        if (prefs.getString("pin_hash", null) != null) {
-            showLockScreen()
-        } else {
-            showHome()
-        }
+        if (prefs.getString("pin_hash", null) != null) showLockScreen()
+        else showSetup()
         requestNotificationPermissionIfNeeded()
     }
 
     private fun buildShell() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(246, 248, 252))
+            setBackgroundColor(Color.rgb(244, 247, 251))
             layoutDirection = LinearLayout.LAYOUT_DIRECTION_RTL
         }
 
         val top = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(20), dp(16), dp(20), dp(8))
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(20), dp(18), dp(20), dp(10))
         }
         top.addView(TextView(this).apply {
             text = "🛡️"
-            textSize = 40f
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(52)))
+            textSize = 34f
+        }, LinearLayout.LayoutParams(dp(50), dp(54)))
         top.addView(TextView(this).apply {
-            text = "מגן התוכן"
-            textSize = 25f
+            text = "מגן התוכן\nהגנה ובקרת אפליקציות"
+            textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(16, 42, 67))
-            gravity = Gravity.CENTER
-        })
+            gravity = Gravity.CENTER_VERTICAL
+        }, LinearLayout.LayoutParams(0, dp(60), 1f))
         root.addView(top)
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
             clipToPadding = false
-            setPadding(0, dp(4), 0, dp(4))
         }
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(6), dp(18), dp(14))
+            setPadding(dp(18), dp(8), dp(18), dp(18))
         }
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -84,13 +79,14 @@ class MainActivity : Activity() {
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(8), dp(8), dp(8), dp(8))
-            background = rounded(Color.WHITE, 20)
+            background = rounded(Color.WHITE, 22)
         }
         listOf("ראשי", "חסימות", "הגדרות").forEachIndexed { index, label ->
-            val b = Button(this).apply {
+            nav.addView(Button(this).apply {
                 text = label
                 textSize = 13f
                 isAllCaps = false
+                background = rounded(if (index == 0) Color.rgb(230, 239, 250) else Color.WHITE, 16)
                 setOnClickListener {
                     if (!unlocked && prefs.getString("pin_hash", null) != null) {
                         showLockScreen()
@@ -102,116 +98,155 @@ class MainActivity : Activity() {
                         2 -> showSettings()
                     }
                 }
-            }
-            nav.addView(b, LinearLayout.LayoutParams(0, dp(52), 1f))
+            }, LinearLayout.LayoutParams(0, dp(52), 1f))
         }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(70)))
         setContentView(root)
     }
 
+    private fun showSetup() {
+        unlocked = true
+        content.removeAllViews()
+        addCardTitle("ברוכים הבאים")
+        addText("בפעם הראשונה יש להפעיל את ההגנה ולהגדיר דרך כניסה. לאחר מכן האפליקציה תוכל להגן על אתרים ואפליקציות שבחרת.")
+        addButton("1. הגדר קוד / ביומטריה", Color.rgb(21, 101, 192)) { setPin() }
+        addButton("2. הפעל הגנה", Color.rgb(46, 125, 50)) { requestVpnPermission() }
+        addButton("3. הגדר בקרת אפליקציות") { openAppControl() }
+        addText("חשוב: Android לא מאפשר לאפליקציה רגילה לנעול את כפתור הבית/החזרה או להפעיל שירות נגישות בלי אישור מפורש שלך.")
+    }
+
     private fun showLockScreen() {
         unlocked = false
         content.removeAllViews()
-        addTitle("הזן קוד גישה")
-        addText("כדי להיכנס למגן התוכן יש להזין את הקוד שהגדרת.")
+        addCardTitle("🔐 קוד גישה")
+        addText("הזן את הקוד שהגדרת. אפשר לאשר גם דרך כפתור ✓ במקלדת.")
+        val mode = prefs.getString("auth_mode", "PIN4")
         val input = EditText(this).apply {
-            hint = "קוד גישה"
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            textSize = 18f
-        }
-        content.addView(input, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(12) })
-        addButton("פתיחה", Color.rgb(21, 101, 192)) {
-            if (hash(input.text.toString()) == prefs.getString("pin_hash", null)) {
-                unlocked = true
-                showHome()
-            } else {
-                input.text.clear()
-                input.error = "קוד שגוי"
+            hint = if (mode == "PIN4") "4 ספרות" else "קוד גישה"
+            inputType = if (mode == "PIN4") InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            textSize = 20f
+            gravity = Gravity.CENTER
+            isSingleLine = true
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            setOnEditorActionListener { _, actionId, event ->
+                if (actionId == EditorInfo.IME_ACTION_DONE || event?.keyCode == KeyEvent.KEYCODE_ENTER) {
+                    verifyMainCode(input)
+                    true
+                } else false
             }
         }
+        content.addView(input, LinearLayout.LayoutParams(-1, dp(60)).apply { bottomMargin = dp(12) })
+        addButton("✓ אישור", Color.rgb(21, 101, 192)) { verifyMainCode(input) }
+        if (mode == "BIOMETRIC") addButton("טביעת אצבע / ביומטריה") { authenticateMainBiometric() }
+    }
+
+    private fun verifyMainCode(input: EditText) {
+        if (hash(input.text.toString()) == prefs.getString("pin_hash", null)) {
+            unlocked = true
+            showHome()
+        } else {
+            input.selectAll()
+            input.error = "קוד שגוי"
+        }
+    }
+
+    private fun authenticateMainBiometric() {
+        if (Build.VERSION.SDK_INT < 28) {
+            showMessage("ביומטריה אינה זמינה בגרסת Android זו.")
+            return
+        }
+        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+        val prompt = android.hardware.biometrics.BiometricPrompt.Builder(this)
+            .setTitle("מגן התוכן")
+            .setSubtitle("אימות ביומטרי")
+            .setDescription("אשר כניסה באמצעות טביעת אצבע או ביומטריה של המכשיר.")
+            .setNegativeButton("שימוש בקוד", executor) { _, _ -> }
+            .build()
+        prompt.authenticate(android.os.CancellationSignal(), executor,
+            object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
+                    runOnUiThread {
+                        unlocked = true
+                        showHome()
+                    }
+                }
+            })
     }
 
     private fun showHome() {
         content.removeAllViews()
-        addTitle("הגנה")
+        addCardTitle("הגנה")
         val active = BlockerVpnService.isProtectionActive
         status = TextView(this).apply {
-            text = if (active) "●  ההגנה פעילה" else "●  ההגנה אינה פעילה"
-            textSize = 18f
+            text = if (active) "●  ההגנה פעילה" else "○  ההגנה כבויה"
+            textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(if (active) Color.rgb(46, 125, 50) else Color.rgb(98, 125, 152))
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-            background = rounded(Color.WHITE, 18)
+            setTextColor(if (active) Color.rgb(46,125,50) else Color.rgb(183,28,28))
+            gravity = Gravity.CENTER
+            setPadding(dp(16), dp(18), dp(16), dp(18))
+            background = rounded(Color.WHITE, 20)
         }
-        content.addView(status, LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = dp(14)
-        })
-        addText("החסימה פועלת דרך DNS. אתרים ברשימת החסימה ייחסמו, ובמקביל הגלישה הרגילה בכרום תמשיך לעבוד.")
-        addButton(if (active) "ההגנה פעילה" else "הפעל הגנה", Color.rgb(21, 101, 192)) {
-            if (!active) requestVpnPermission()
+        content.addView(status, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(14) })
+
+        addText("כאן אפשר להפעיל או לכבות את הגנת ה-DNS מאותו כפתור. החסימה אינה תלויה בהיסטוריית Chrome או בהיסטוריית אפליקציות.")
+
+        addButton(if (active) "⏸ כבה הגנה" else "▶ הפעל הגנה", if (active) Color.rgb(183,28,28) else Color.rgb(46,125,50)) {
+            if (BlockerVpnService.isProtectionActive) stopProtection() else requestVpnPermission()
         }
-        addButton("פתח חיפוש חדש") {
-            openProtectedSearch()
-        }
-        addButton("הסתר את סמל האפליקציה") { hideLauncherIcon() }
+        addButton("🔎 פתח חיפוש מוגן") { openProtectedSearch() }
+        addButton("📱 בקרת אפליקציות") { openAppControl() }
+        addButton("🙈 הסתר את סמל האפליקציה") { hideLauncherIcon() }
+    }
+
+    private fun openAppControl() {
+        startActivity(Intent(this, AppControlActivity::class.java))
     }
 
     private fun openProtectedSearch() {
-        // Open Google only through the protected route. The DNS layer also
-        // forces Google's SafeSearch VIP, including image and video search.
-        val protectedSearch = Uri.parse("https://www.google.com/search?safe=active")
-        startActivity(Intent(Intent.ACTION_VIEW, protectedSearch))
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?safe=active")))
     }
 
     private fun showBlocks() {
         content.removeAllViews()
-        addTitle("רשימת חסימות")
-        addText("הוסף דומיינים שתרצה לחסום. לדוגמה: example.com")
+        addCardTitle("רשימת חסימות")
+        addText("הוסף דומיינים שתרצה לחסום.")
         val input = EditText(this).apply {
-            hint = "דומיין לחסימה"
+            hint = "לדוגמה: example.com"
             textSize = 16f
         }
-        content.addView(input, LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(10) })
-        addButton("הוסף חסימה", Color.rgb(21, 101, 192)) {
+        content.addView(input, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(10) })
+        addButton("＋ הוסף חסימה", Color.rgb(21,101,192)) {
             val domain = input.text.toString().trim().lowercase()
             if (domain.matches(Regex("[a-z0-9.-]+")) && domain.contains(".")) {
-                getSharedPreferences("custom_blocks", MODE_PRIVATE).edit().putBoolean(domain, true).commit()
+                getSharedPreferences("custom_blocks", MODE_PRIVATE).edit().putBoolean(domain, true).apply()
                 BlockerVpnService.reloadCustomBlocks()
-                AlertDialog.Builder(this)
-                    .setTitle("נשמר")
-                    .setMessage("הדומיין נוסף לרשימת החסימה.")
-                    .setPositiveButton("אישור", null)
-                    .show()
+                showMessage("הדומיין נוסף לרשימת החסימה.")
                 input.text.clear()
-            } else {
-                AlertDialog.Builder(this)
-                    .setMessage("הזן דומיין תקין, למשל example.com")
-                    .setPositiveButton("אישור", null)
-                    .show()
-            }
+            } else input.error = "דומיין לא תקין"
         }
     }
 
     private fun showSettings() {
         content.removeAllViews()
-        addTitle("הגדרות")
-        addText("הגנת ההסרה משתמשת במנהל המכשיר של Android. Android עצמו עדיין שולט בחיבור ה-VPN ובהתראות המערכת.")
-        addButton("הפעל הגנת הסרה") { requestDeviceAdmin() }
-        addButton("הגדר / שנה קוד גישה", Color.rgb(21, 101, 192)) { setPin() }
-        addButton("הסרת האפליקציה", Color.rgb(183, 28, 28)) { requestUninstall() }
-        addButton("הצג את סמל האפליקציה") { showLauncherIcon() }
-        addButton("עדכון האפליקציה", Color.rgb(46, 125, 50)) { AppUpdater.downloadAndInstall(this) }
-        addButton("פתח הגדרות VPN") {
-            startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
-        }
+        addCardTitle("הגדרות")
+        addText("הגדרות אבטחה, קוד, בקרת אפליקציות ועדכונים.")
+        addButton("🔐 סוג קוד / טביעת אצבע", Color.rgb(21,101,192)) { setPin() }
+        addButton("📱 ניהול אפליקציות מוגנות") { openAppControl() }
+        addButton("🛡️ הפעל הגנת הסרה") { requestDeviceAdmin() }
+        addButton("🗑️ הסרת האפליקציה", Color.rgb(183,28,28)) { requestUninstall() }
+        addButton("👁️ הצג את סמל האפליקציה") { showLauncherIcon() }
+        addButton("↻ עדכון האפליקציה", Color.rgb(46,125,50)) { AppUpdater.downloadAndInstall(this) }
+        addButton("⚙ פתח הגדרות VPN") { startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }
+        addText("הערת Android: מחיקת 'נתוני האפליקציה' מאפס את האחסון הפרטי של האפליקציה. אפליקציה רגילה אינה יכולה למנוע זאת. לאחר אתחול רגיל ניתן להפעיל מחדש אוטומטית את ההגנה אם הרשאת VPN עדיין קיימת.")
     }
 
-    private fun addTitle(text: String) {
+    private fun addCardTitle(text: String) {
         content.addView(TextView(this).apply {
             this.text = text
-            textSize = 24f
+            textSize = 27f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(16, 42, 67))
+            setTextColor(Color.rgb(16,42,67))
             setPadding(0, dp(8), 0, dp(12))
         })
     }
@@ -220,25 +255,20 @@ class MainActivity : Activity() {
         content.addView(TextView(this).apply {
             this.text = text
             textSize = 15f
-            setTextColor(Color.rgb(80, 100, 120))
+            setTextColor(Color.rgb(80,100,120))
             setPadding(0, 0, 0, dp(14))
         })
     }
 
     private fun addButton(text: String, color: Int = Color.WHITE, action: () -> Unit) {
-        val b = Button(this).apply {
+        content.addView(Button(this).apply {
             this.text = text
             textSize = 15f
             isAllCaps = false
+            setTextColor(if (color == Color.WHITE) Color.rgb(30,45,60) else Color.WHITE)
+            background = rounded(color, 16)
             setOnClickListener { action() }
-            if (color != Color.WHITE) {
-                setTextColor(Color.WHITE)
-                background = rounded(color, 14)
-            } else {
-                background = rounded(Color.WHITE, 14)
-            }
-        }
-        content.addView(b, LinearLayout.LayoutParams(-1, dp(54)).apply { bottomMargin = dp(10) })
+        }, LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(10) })
     }
 
     private fun requestVpnPermission() {
@@ -247,18 +277,29 @@ class MainActivity : Activity() {
     }
 
     private fun startProtection() {
+        prefs.edit().putBoolean("protection_enabled", true).apply()
         val serviceIntent = Intent(this, BlockerVpnService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent)
-        else startService(serviceIntent)
-        status.text = "●  ההגנה מופעלת"
-        status.setTextColor(Color.rgb(46, 125, 50))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent) else startService(serviceIntent)
+        if (::status.isInitialized) {
+            status.text = "●  ההגנה פעילה"
+            status.setTextColor(Color.rgb(46,125,50))
+        }
+    }
+
+    private fun stopProtection() {
+        prefs.edit().putBoolean("protection_enabled", false).apply()
+        stopService(Intent(this, BlockerVpnService::class.java))
+        if (::status.isInitialized) {
+            status.text = "○  ההגנה כבויה"
+            status.setTextColor(Color.rgb(183,28,28))
+        }
     }
 
     private fun requestDeviceAdmin() {
         val component = ComponentName(this, BlockerDeviceAdminReceiver::class.java)
         val manager = getSystemService(DevicePolicyManager::class.java)
         if (manager.isAdminActive(component)) {
-            AlertDialog.Builder(this).setMessage("הגנת ההסרה כבר פעילה.").setPositiveButton("אישור", null).show()
+            showMessage("הגנת ההסרה כבר פעילה.")
             return
         }
         startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
@@ -268,168 +309,123 @@ class MainActivity : Activity() {
     }
 
     private fun setPin() {
+        val modes = arrayOf("4 ספרות", "קוד באורך חופשי", "טביעת אצבע / ביומטריה")
+        val keys = arrayOf("PIN4", "PASSWORD", "BIOMETRIC")
+        val current = keys.indexOf(prefs.getString("auth_mode", "PIN4")).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle("בחר דרך כניסה")
+            .setSingleChoiceItems(modes, current) { dialog, which ->
+                dialog.dismiss()
+                askForNewCode(keys[which])
+            }
+            .setNegativeButton("ביטול", null)
+            .show()
+    }
+
+    private fun askForNewCode(mode: String) {
         val oldHash = prefs.getString("pin_hash", null)
-        val oldInput = EditText(this).apply {
-            hint = if (oldHash == null) "אין קוד קודם" else "קוד נוכחי"
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-        }
-        val newInput = EditText(this).apply {
-            hint = "קוד חדש — לפחות 4 ספרות"
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-        }
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), 0, dp(24), 0)
-            if (oldHash != null) addView(oldInput, LinearLayout.LayoutParams(-1, dp(56)))
-            addView(newInput, LinearLayout.LayoutParams(-1, dp(56)))
+            setPadding(dp(22), 0, dp(22), 0)
         }
+        val oldInput = EditText(this).apply {
+            hint = if (oldHash == null) "אין קוד קודם" else "קוד נוכחי"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        if (oldHash != null) box.addView(oldInput, LinearLayout.LayoutParams(-1, dp(56)))
+        val newInput = EditText(this).apply {
+            hint = when (mode) {
+                "PIN4" -> "קוד חדש — בדיוק 4 ספרות"
+                "PASSWORD" -> "קוד חדש — באורך לבחירתך"
+                else -> "קוד גיבוי — לפחות 4 תווים"
+            }
+            inputType = if (mode == "PIN4") InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            setSingleLine(true)
+        }
+        box.addView(newInput, LinearLayout.LayoutParams(-1, dp(56)))
 
         AlertDialog.Builder(this)
-            .setTitle(if (oldHash == null) "יצירת קוד גישה" else "שינוי קוד גישה")
+            .setTitle("הגדרת דרך כניסה")
             .setView(box)
             .setPositiveButton("שמירה", null)
             .setNegativeButton("ביטול", null)
             .create().also { dialog ->
                 dialog.setOnShowListener {
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                        val oldOk = oldHash == null || hash(oldInput.text.toString()) == oldHash
-                        val newPin = newInput.text.toString()
-                        if (!oldOk) {
-                            oldInput.error = "הקוד הנוכחי שגוי"
+                        if (oldHash != null && hash(oldInput.text.toString()) != oldHash) {
+                            oldInput.error = "קוד נוכחי שגוי"
                             return@setOnClickListener
                         }
-                        if (newPin.length < 4 || !newPin.all { it.isDigit() }) {
-                            newInput.error = "יש להזין לפחות 4 ספרות"
+                        val value = newInput.text.toString()
+                        val valid = if (mode == "PIN4") value.length == 4 && value.all { it.isDigit() } else value.length >= 4
+                        if (!valid) {
+                            newInput.error = "קוד לא תקין"
                             return@setOnClickListener
                         }
-                        val saved = prefs.edit().putString("pin_hash", hash(newPin)).commit()
-                        if (saved) {
-                            unlocked = true
-                            dialog.dismiss()
-                            AlertDialog.Builder(this)
-                                .setTitle("הקוד נשמר")
-                                .setMessage("מהפעם הבאה שתפתח את האפליקציה יידרש הקוד.")
-                                .setPositiveButton("אישור", null)
-                                .show()
-                        }
+                        prefs.edit().putString("pin_hash", hash(value)).putString("auth_mode", mode).apply()
+                        unlocked = true
+                        dialog.dismiss()
+                        showMessage("ההגדרה נשמרה.")
                     }
                 }
             }.show()
     }
 
     private fun requestUninstall() {
-        val pinHash = prefs.getString("pin_hash", null)
-        if (pinHash == null) {
-            AlertDialog.Builder(this)
-                .setTitle("הסרה מוגנת")
-                .setMessage("אי אפשר להסיר לפני שמוגדר קוד גישה.")
-                .setPositiveButton("אישור", null)
-                .show()
+        val pinHash = prefs.getString("pin_hash", null) ?: run {
+            showMessage("הגדר קוד גישה לפני הסרה.")
             return
         }
-
         val component = ComponentName(this, BlockerDeviceAdminReceiver::class.java)
         val manager = getSystemService(DevicePolicyManager::class.java)
-        val adminActive = manager.isAdminActive(component)
-        val protectionActive = BlockerVpnService.isProtectionActive
-
-        // Require the protection configuration to be confirmed before the
-        // Android uninstall flow is even opened: PIN + Device Admin + VPN.
-        if (!adminActive || !protectionActive) {
-            val missing = buildString {
-                if (!adminActive) append("• הגנת הסרה של Android אינה פעילה\n")
-                if (!protectionActive) append("• הגנת ה-VPN אינה פעילה\n")
-            }
-            AlertDialog.Builder(this)
-                .setTitle("הסרה חסומה")
-                .setMessage(
-                    "לפני הסרה צריך לאשר שההגנה שהגדרת עדיין פעילה.\n\n$missing" +
-                        "\nהפעל את שתי ההגנות ורק לאחר מכן ניתן יהיה להמשיך."
-                )
-                .setPositiveButton("אישור", null)
-                .show()
+        if (!manager.isAdminActive(component) || !BlockerVpnService.isProtectionActive) {
+            showMessage("לפני הסרה יש להפעיל גם הגנת הסרה וגם הגנת VPN.")
             return
         }
-
         val input = EditText(this).apply {
             hint = "קוד גישה"
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            setSingleLine(true)
         }
         AlertDialog.Builder(this)
             .setTitle("אישור הסרה")
-            .setMessage("ההגנה פעילה. הזן את קוד הגישה כדי לפתוח את מסך ההסרה.")
+            .setMessage("הזן קוד כדי לפתוח את מסך ההסרה.")
             .setView(input)
             .setPositiveButton("המשך") { _, _ ->
                 if (hash(input.text.toString()) == pinHash) {
-                    AlertDialog.Builder(this)
-                        .setTitle("אישור סופי")
-                        .setMessage("אתה עומד להסיר את מגן התוכן. ההגנה תיפסק עם הסרת האפליקציה.")
-                        .setPositiveButton("המשך להסרה") { _, _ ->
-                            startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
-                        }
-                        .setNegativeButton("ביטול", null)
-                        .show()
-                } else {
-                    AlertDialog.Builder(this)
-                        .setMessage("קוד שגוי. ההסרה לא בוצעה.")
-                        .setPositiveButton("אישור", null)
-                        .show()
-                }
+                    startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
+                } else showMessage("קוד שגוי.")
             }
             .setNegativeButton("ביטול", null)
             .show()
     }
 
     private fun hideLauncherIcon() {
-        // Keep an invisible launcher slot instead of removing the entry.
-        // Double-tapping that invisible slot opens the app.
         val visible = ComponentName(this, "com.ari.blocker.LauncherAlias")
         val hidden = ComponentName(this, "com.ari.blocker.HiddenLauncherAlias")
-
-        packageManager.setComponentEnabledSetting(
-            visible,
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-            PackageManager.DONT_KILL_APP
-        )
-        packageManager.setComponentEnabledSetting(
-            hidden,
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-            PackageManager.DONT_KILL_APP
-        )
-
-        AlertDialog.Builder(this)
-            .setTitle("הסמל הוסתר")
-            .setMessage("מגן התוכן נשאר באותו מקום במסך האפליקציות, אבל הסמל עצמו שקוף. לחץ פעמיים על המקום שלו כדי לפתוח את האפליקציה.")
-            .setPositiveButton("אישור", null)
-            .show()
+        packageManager.setComponentEnabledSetting(visible, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+        packageManager.setComponentEnabledSetting(hidden, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+        showMessage("הסמל הוסתר. לחיצה כפולה על המקום השקוף פותחת את האפליקציה.")
     }
 
     private fun showLauncherIcon() {
         val visible = ComponentName(this, "com.ari.blocker.LauncherAlias")
         val hidden = ComponentName(this, "com.ari.blocker.HiddenLauncherAlias")
-
-        packageManager.setComponentEnabledSetting(
-            hidden,
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-            PackageManager.DONT_KILL_APP
-        )
-        packageManager.setComponentEnabledSetting(
-            visible,
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-            PackageManager.DONT_KILL_APP
-        )
-
-        AlertDialog.Builder(this)
-            .setTitle("הסמל הוחזר")
-            .setMessage("סמל מגן התוכן זמין שוב במסך האפליקציות.")
-            .setPositiveButton("אישור", null)
-            .show()
+        packageManager.setComponentEnabledSetting(hidden, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+        packageManager.setComponentEnabledSetting(visible, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+        showMessage("הסמל הוחזר.")
     }
 
     private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= 33 &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_REQUEST)
+    }
+
+    private fun showMessage(message: String) {
+        AlertDialog.Builder(this).setMessage(message).setPositiveButton("אישור", null).show()
     }
 
     private fun rounded(color: Int, radius: Int) = GradientDrawable().apply {
@@ -444,11 +440,9 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        // If Android revoked the VPN, keep the app's protected state visible
-        // and require the user to restore protection from the app.
         if (::status.isInitialized && unlocked && !BlockerVpnService.isProtectionActive) {
-            status.text = "●  ההגנה אינה פעילה"
-            status.setTextColor(Color.rgb(183, 28, 28))
+            status.text = "○  ההגנה כבויה"
+            status.setTextColor(Color.rgb(183,28,28))
         }
     }
 
@@ -462,5 +456,3 @@ class MainActivity : Activity() {
         private const val NOTIFICATION_REQUEST = 101
     }
 }
-
-class BlockerDeviceAdminReceiver : DeviceAdminReceiver()
