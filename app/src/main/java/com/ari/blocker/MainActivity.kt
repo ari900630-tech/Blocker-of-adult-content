@@ -86,7 +86,7 @@ class MainActivity : Activity() {
         }
         val navItems = listOf(
             Triple("⌂", "ראשי", 0),
-            Triple("🛡", "חסימות", 1),
+            Triple("📱", "האפליקציות שלי", 1),
             Triple("⚙", "הגדרות", 2)
         )
         navItems.forEach { (symbol, label, index) ->
@@ -107,7 +107,7 @@ class MainActivity : Activity() {
                     refreshNavSelection()
                     when (index) {
                         0 -> showHome()
-                        1 -> showBlocks()
+                        1 -> openAppControl()
                         2 -> showSettings()
                     }
                 }
@@ -215,17 +215,41 @@ class MainActivity : Activity() {
 
         addText("הכל במקום אחד: הגנת גלישה, חיפוש מוגן ונעילת אפליקציות. הפעל את מה שצריך ותן למגן לעשות את העבודה.")
 
-        addButton(
-            if (active) "✓  ההגנה פעילה" else "▶  הפעל הגנה",
-            if (active) Color.rgb(46,125,50) else Color.rgb(21,101,192),
-            selected = active
-        ) {
-            if (BlockerVpnService.isProtectionActive) requestStopProtection()
-            else requestVpnPermission()
-        }
-        addButton("📱  כל האפליקציות בטלפון", Color.rgb(55, 78, 102)) { openAppControl() }
+        addProtectionSwitch(active)
+        addButton("📱  האפליקציות שלי בטלפון", Color.rgb(55, 78, 102)) { openAppControl() }
         addButton("🌐  פתח חיפוש בכרום", Color.rgb(21, 101, 192)) { requestProtectedSearch() }
         addButton("✨  אפשרויות נוספות") { showSettings() }
+    }
+
+    private fun addProtectionSwitch(active: Boolean) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(8), dp(12), dp(8))
+            background = rounded(if (active) Color.rgb(232,244,236) else Color.WHITE, 20)
+        }
+        row.addView(TextView(this).apply {
+            text = if (active) "●  ההגנה פעילה" else "○  ההגנה כבויה"
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(if (active) Color.rgb(27,94,32) else Color.rgb(80,100,120))
+            gravity = Gravity.CENTER_VERTICAL
+        }, LinearLayout.LayoutParams(0, dp(62), 1f))
+        row.addView(android.widget.Switch(this).apply {
+            isChecked = active
+            text = ""
+            contentDescription = if (active) "כיבוי ההגנה" else "הפעלת ההגנה"
+            setOnCheckedChangeListener { _, checked ->
+                if (checked) {
+                    requestVpnPermission()
+                } else {
+                    // כיבוי בלבד דורש קוד; הפעלה אינה דורשת קוד.
+                    isChecked = true
+                    requestStopProtection()
+                }
+            }
+        }, LinearLayout.LayoutParams(dp(64), dp(56)))
+        content.addView(row, LinearLayout.LayoutParams(-1, dp(78)).apply { bottomMargin = dp(12) })
     }
 
     private fun requestProtectedSearch() {
@@ -307,7 +331,7 @@ class MainActivity : Activity() {
         addCardTitle("הגדרות המגן")
         addText("הגדרות אבטחה, קוד, בקרת אפליקציות ועדכונים.")
         addButton("🔐 סוג קוד / טביעת אצבע", Color.rgb(21,101,192)) { setPin() }
-        addButton("📱 כל האפליקציות בטלפון") { openAppControl() }
+        addButton("📱 האפליקציות שלי בטלפון") { openAppControl() }
         addButton("🙈 הסתר את סמל האפליקציה") { hideLauncherIcon() }
         addButton("👁️ הצג את סמל האפליקציה") { showLauncherIcon() }
         addButton("↻ עדכון האפליקציה", Color.rgb(46,125,50)) { AppUpdater.downloadAndInstall(this) }
