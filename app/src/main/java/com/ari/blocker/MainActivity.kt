@@ -205,7 +205,13 @@ class MainActivity : Activity() {
     }
 
     private fun openProtectedSearch() {
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?safe=active")))
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?safe=active"))
+        val resolver = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        val browserPackage = resolver.firstOrNull()?.activityInfo?.packageName
+        if (browserPackage != null) {
+            AppBlockAccessibilityServiceHolder.service?.allowPackageFromProtectedApp(browserPackage)
+        }
+        startActivity(intent)
     }
 
     private fun showBlocks() {
