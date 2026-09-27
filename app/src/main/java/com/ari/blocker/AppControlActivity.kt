@@ -57,11 +57,7 @@ class AppControlActivity : Activity() {
             setTextColor(if (accessibilityOn) Color.rgb(46,125,50) else Color.rgb(183,28,28))
             setPadding(dp(12), dp(12), dp(12), dp(12))
             setOnClickListener {
-                try {
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                } catch (_: Exception) {
-                    startActivity(Intent(Settings.ACTION_SETTINGS))
-                }
+                openAccessibilitySettings()
             }
         }
         root.addView(access)
@@ -140,6 +136,22 @@ class AppControlActivity : Activity() {
         scroll.addView(list)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
+    }
+
+    private fun openAccessibilitySettings() {
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        try {
+            if (intent.resolveActivity(packageManager) != null) {
+                startActivity(intent)
+            } else {
+                startActivity(Intent(Settings.ACTION_SETTINGS))
+            }
+        } catch (_: Exception) {
+            try {
+                startActivity(Intent(Settings.ACTION_SETTINGS))
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private fun isAccessibilityEnabled(): Boolean {
