@@ -119,28 +119,49 @@ class AppControlActivity : Activity() {
             val label = runCatching { packageManager.getApplicationLabel(app).toString() }
                 .getOrDefault(pkg)
 
+            val initiallyLocked = prefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(14), dp(6), dp(8), dp(6))
-                background = rounded(Color.WHITE, 18)
+                background = rounded(if (initiallyLocked) Color.rgb(232,244,236) else Color.WHITE, 18)
             }
 
             val title = TextView(this).apply {
-                text = label
+                text = if (initiallyLocked) "✓  $label" else label
                 textSize = 16f
-                setTextColor(Color.rgb(30, 45, 60))
+                typeface = if (initiallyLocked) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                setTextColor(if (initiallyLocked) Color.rgb(27,94,32) else Color.rgb(30,45,60))
                 layoutDirection = LinearLayout.LAYOUT_DIRECTION_RTL
             }
             row.addView(title, LinearLayout.LayoutParams(0, dp(54), 1f))
 
             val sw = Switch(this).apply {
-                text = "נעילה"
-                isChecked = prefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
-                setOnCheckedChangeListener { _, checked ->
-                    val current = prefs.getStringSet("blocked_apps", emptySet())?.toMutableSet() ?: mutableSetOf()
-                    if (checked) current.add(pkg) else current.remove(pkg)
-                    prefs.edit().putStringSet("blocked_apps", current).apply()
+                text = if (initiallyLocked) "✓ נעולה" else "נעילה"
+                isChecked = initiallyLocked
+                setOnCheckedChangeListener { button, checked ->
+                    if (checked) {
+                        updateLockState(pkg, true, button, row, title, label)
+                    } else {
+                        val pinHash = getSharedPreferences("settings", MODE_PRIVATE).getString("pin_hash", null)
+                        if (pinHash == null) {
+                            button.setOnCheckedChangeListener(null)
+                            button.isChecked = true
+                            button.setOnCheckedChangeListener { b, c ->
+                                if (c) updateLockState(pkg, true, b, row, title, label)
+                                else askToDisableLock(pkg, label, b, row, title, pinHash)
+                            }
+                            showMessage("כדי לבטל נעילה צריך קודם להגדיר קוד גישה.")
+                            return@setOnCheckedChangeListener
+                        }
+                        button.setOnCheckedChangeListener(null)
+                        button.isChecked = true
+                        button.setOnCheckedChangeListener { b, c ->
+                            if (c) updateLockState(pkg, true, b, row, title, label)
+                            else askToDisableLock(pkg, label, b, row, title, pinHash)
+                        }
+                        askToDisableLock(pkg, label, button, row, title, pinHash)
+                    }
                 }
             }
             row.addView(sw, LinearLayout.LayoutParams(dp(90), dp(54)))
@@ -150,6 +171,73 @@ class AppControlActivity : Activity() {
         scroll.addView(list)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
+    }
+
+    private fun updateLockState(
+        pkg: String,
+        locked: Boolean,
+        button: android.widget.CompoundButton,
+        row: LinearLayout,
+        title: TextView,
+        label: String
+    ) {
+        val current = prefs.getStringSet("blocked_apps", emptySet())?.toMutableSet() ?: mutableSetOf()
+        if (locked) current.add(pkg) else current.remove(pkg)
+        prefs.edit().putStringSet("blocked_apps", current).apply()
+        button.text = if (locked) "✓ נעולה" else "נעילה"
+        button.isChecked = locked
+        title.text = if (locked) "✓  $label" else label
+        title.typeface = if (locked) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        title.setTextColor(if (locked) Color.rgb(27,94,32) else Color.rgb(30,45,60))
+        row.background = rounded(if (locked) Color.rgb(232,244,236) else Color.WHITE, 18)
+    }
+
+    private fun askToDisableLock(
+        pkg: String,
+        label: String,
+        button: android.widget.CompoundButton,
+        row: LinearLayout,
+        title: TextView,
+        pinHash: String?
+    ) {
+        if (pinHash == null) {
+            showMessage("כדי לבטל נעילה צריך קודם להגדיר קוד גישה.")
+            return
+        }
+        val input = android.widget.EditText(this).apply {
+            hint = "קוד גישה"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setSingleLine(true)
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("ביטול נעילה")
+            .setMessage("כדי להסיר את הנעילה מ־$label יש לאשר עם קוד הגישה.")
+            .setView(input)
+            .setPositiveButton("ביטול נעילה", null)
+            .setNegativeButton("השאר נעול", null)
+            .create().also { dialog ->
+                dialog.setOnShowListener {
+                    dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                        if (hash(input.text.toString()) != pinHash) {
+                            input.error = "קוד שגוי"
+                            return@setOnClickListener
+                        }
+                        dialog.dismiss()
+                        updateLockState(pkg, false, button, row, title, label)
+                    }
+                }
+            }.show()
+    }
+
+    private fun hash(value: String): String =
+        java.security.MessageDigest.getInstance("SHA-256")
+            .digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    private fun showMessage(message: String) {
+        android.app.AlertDialog.Builder(this)
+            .setMessage(message)
+            .setPositiveButton("אישור", null)
+            .show()
     }
 
     private fun openAccessibilitySettings() {
