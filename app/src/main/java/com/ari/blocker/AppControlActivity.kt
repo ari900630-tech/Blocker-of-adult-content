@@ -66,12 +66,7 @@ class AppControlActivity : Activity() {
             setPadding(0, dp(8), 0, dp(18))
         }
 
-        val apps = try {
-            packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                .filter { it.packageName != packageName }
-                .distinctBy { it.packageName }
-                .sortedBy { runCatching { packageManager.getApplicationLabel(it).toString() }.getOrDefault(it.packageName) }
-        } catch (_: Exception) { emptyList() }
+        val apps = getLauncherApps()
 
         list.addView(TextView(this).apply {
             text = "${apps.size} אפליקציות נמצאו — לחץ על שורה כדי לשנות נעילה"
@@ -82,27 +77,34 @@ class AppControlActivity : Activity() {
         })
 
         apps.forEach { app ->
-            val pkg = app.packageName
-            val label = runCatching { packageManager.getApplicationLabel(app).toString() }.getOrDefault(pkg)
+            val pkg = app.activityInfo.packageName
+            if (pkg == packageName) return@forEach
+            val label = runCatching { app.activityInfo.loadLabel(packageManager).toString() }.getOrDefault(pkg)
+            val icon = runCatching { app.activityInfo.loadIcon(packageManager) }.getOrNull()
             val initiallyLocked = prefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
 
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(14), dp(6), dp(8), dp(6))
+                setPadding(dp(10), dp(6), dp(10), dp(6))
                 isClickable = true
                 isFocusable = true
                 background = rounded(if (initiallyLocked) Color.rgb(232,244,236) else Color.WHITE, 18)
             }
+            if (icon != null) row.addView(ImageView(this).apply {
+                setImageDrawable(icon)
+                contentDescription = label
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+            }, LinearLayout.LayoutParams(dp(52), dp(52)).apply { leftMargin = dp(8); rightMargin = dp(8) })
 
             val title = TextView(this).apply {
                 text = if (initiallyLocked) "✓  $label" else label
                 textSize = 16f
                 typeface = if (initiallyLocked) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                 setTextColor(if (initiallyLocked) Color.rgb(27,94,32) else Color.rgb(30,45,60))
+                gravity = Gravity.CENTER_VERTICAL
             }
-            row.addView(title, LinearLayout.LayoutParams(0, dp(54), 1f))
-
+            row.addView(title, LinearLayout.LayoutParams(0, dp(58), 1f))
             val state = TextView(this).apply {
                 text = if (initiallyLocked) "✓ נעולה" else "פתוחה"
                 textSize = 13f
@@ -110,20 +112,28 @@ class AppControlActivity : Activity() {
                 gravity = Gravity.CENTER
                 setTextColor(if (initiallyLocked) Color.rgb(27,94,32) else Color.rgb(80,100,120))
             }
-            row.addView(state, LinearLayout.LayoutParams(dp(72), dp(54)))
-
+            row.addView(state, LinearLayout.LayoutParams(dp(72), dp(58)))
             row.setOnClickListener {
                 val currentLocked = prefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
                 if (currentLocked) askToDisableLock(pkg, label, row, title, state)
                 else updateLockState(pkg, true, row, title, state, label)
             }
-
-            list.addView(row, LinearLayout.LayoutParams(-1, dp(66)).apply { bottomMargin = dp(8) })
+            list.addView(row, LinearLayout.LayoutParams(-1, dp(70)).apply { bottomMargin = dp(8) })
         }
 
         scroll.addView(list)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
+    }
+
+    private fun getLauncherApps(): List<android.content.pm.ResolveInfo> {
+        val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+        return try {
+            packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL)
+                .filter { it.activityInfo?.packageName != packageName }
+                .distinctBy { it.activityInfo.packageName }
+                .sortedBy { runCatching { it.activityInfo.loadLabel(packageManager).toString() }.getOrDefault(it.activityInfo.packageName) }
+        } catch (_: Exception) { emptyList() }
     }
 
     private fun updateLockState(pkg: String, locked: Boolean, row: LinearLayout, title: TextView, state: TextView, label: String) {
