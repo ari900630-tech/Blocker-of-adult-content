@@ -87,7 +87,19 @@ class AppBlockAccessibilityService : AccessibilityService() {
 
     private fun looksLikeUrl(value: String): Boolean {
         val v = value.trim().lowercase()
-        return v.startsWith("http://") || v.startsWith("https://") || v.startsWith("www.")
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .removePrefix("www.")
+            .substringBefore('/')
+            .substringBefore('?')
+            .substringBefore('#')
+
+        if (v.isBlank() || v.contains(" ")) return false
+        if (v == "localhost" || v.startsWith("127.") || v.startsWith("192.168.") || v.startsWith("10.")) return false
+
+        // Detect full URLs and bare domains typed into the browser address bar.
+        return v.contains(".") &&
+            v.matches(Regex("[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+"))
     }
 
     private fun collectAddressBarCandidates(node: AccessibilityNodeInfo, out: MutableList<String>) {
