@@ -45,6 +45,7 @@ class MainActivity : Activity() {
     }
 
     private fun buildShell() {
+        status = TextView(this)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = purpleGradient()
@@ -61,7 +62,7 @@ class MainActivity : Activity() {
             textSize = 34f
         }, LinearLayout.LayoutParams(dp(50), dp(54)))
         top.addView(TextView(this).apply {
-            text = "מגן +\nApp Lock"
+            text = "מגן +"
             textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
@@ -88,13 +89,14 @@ class MainActivity : Activity() {
         val navItems = listOf(
             Triple("⌂", "ראשי", 0),
             Triple("▦", "אפליקציות", 1),
-            Triple("⚙", "הגדרות", 2)
+            Triple("⚙", "הגדרות", 2),
+            Triple("🔐", "בחירת הסיסמה", 3)
         )
         navItems.forEach { (symbol, label, index) ->
             nav.addView(TextView(this).apply {
                 navButtons.add(this)
-                text = symbol
-                textSize = 22f
+                text = if (index == 3) "🔐\nסיסמה" else symbol
+                textSize = if (index == 3) 13f else 22f
                 gravity = Gravity.CENTER
                 setTextColor(Color.rgb(58, 37, 104))
                 contentDescription = label
@@ -111,6 +113,7 @@ class MainActivity : Activity() {
                             0 -> showHome()
                             1 -> showAppControl()
                             2 -> showSettings()
+                            3 -> showPasswordSelection()
                         }
                     }
                 }
@@ -632,6 +635,24 @@ class MainActivity : Activity() {
                 content.addView(row, LinearLayout.LayoutParams(-1, dp(62)).apply { bottomMargin = dp(8) })
             }
         }
+    }
+
+    private fun showPasswordSelection() {
+        content.removeAllViews()
+        content.setPadding(dp(14), dp(6), dp(14), dp(12))
+        addCardTitle("🔐 בחירת הסיסמה")
+        addText("בחר כאן את סוג הסיסמה שפותחת את מגן +.")
+
+        val modes = listOf(
+            Triple("🔢", "4 ספרות בלבד", "קוד קצר של 4 ספרות"),
+            Triple("🔤", "מספרים ומילים", "סיסמה באורך חופשי"),
+            Triple("🔵", "פס החלקה", "9 עיגולים — מציירים מסלול")
+        )
+        modes.forEach { (icon, title, subtitle) ->
+            val card = settingsSection(icon, title, subtitle) { setPin() }
+            content.addView(card)
+        }
+        addButton("בחירת הסיסמה", Color.rgb(88, 231, 226)) { setPin() }
     }
 
     private fun showSettings() {
