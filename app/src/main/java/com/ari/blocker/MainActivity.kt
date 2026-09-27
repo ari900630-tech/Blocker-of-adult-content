@@ -1008,27 +1008,25 @@ class MainActivity : Activity() {
             background = rounded(screenColor, 30)
         }
 
-        screen.addView(TextView(this).apply {
-            text = when (mode) {
-                "PATTERN" -> "▦"
-                else -> "🛡️🔒"
-            }
-            textSize = if (mode == "PATTERN") 42f else 48f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(68)))
+        if (mode != "PATTERN") {
+            screen.addView(TextView(this).apply {
+                text = "🛡️🔒"
+                textSize = 48f
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(-1, dp(68)))
 
-        screen.addView(TextView(this).apply {
-            text = when (mode) {
-                "PIN4" -> "Type an unlock password"
-                "PATTERN" -> "Screen Lock"
-                else -> "בחר סיסמת פתיחה"
-            }
-            textSize = 22f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(42)))
+            screen.addView(TextView(this).apply {
+                text = when (mode) {
+                    "PIN4" -> "Type an unlock password"
+                    else -> "בחר סיסמת פתיחה"
+                }
+                textSize = 22f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(-1, dp(42)))
+        }
 
         if (oldHash != null) {
             val current = EditText(this).apply {
@@ -1125,7 +1123,7 @@ class MainActivity : Activity() {
                     val current = screen.tag as? EditText
                     if (oldHash != null && (current == null || hash(current.text.toString()) != oldHash)) {
                         current?.error = "סיסמה נוכחית שגויה"
-                        return@actionButton
+                        return@setOnClickListener
                     }
                     val value = chosen
                     if (value == null || value.size < 4) {
