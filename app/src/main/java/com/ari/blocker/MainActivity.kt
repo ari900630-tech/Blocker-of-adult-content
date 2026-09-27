@@ -60,7 +60,7 @@ class MainActivity : Activity() {
             textSize = 34f
         }, LinearLayout.LayoutParams(dp(50), dp(54)))
         top.addView(TextView(this).apply {
-            text = "מגן התוכן\nApp Lock"
+            text = "מגן +\nApp Lock"
             textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
@@ -152,7 +152,7 @@ class MainActivity : Activity() {
         card.addView(TextView(this).apply { text="🛡️🔒"; textSize=46f; gravity=Gravity.CENTER },
             LinearLayout.LayoutParams(-1, dp(62)))
         card.addView(TextView(this).apply {
-            text="פתח את מגן התוכן"; textSize=23f; typeface=Typeface.DEFAULT_BOLD
+            text="פתח את מגן +"; textSize=23f; typeface=Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE); gravity=Gravity.CENTER
         }, LinearLayout.LayoutParams(-1, dp(40)))
         card.addView(TextView(this).apply {
@@ -219,7 +219,7 @@ class MainActivity : Activity() {
         }
         val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
         val prompt = android.hardware.biometrics.BiometricPrompt.Builder(this)
-            .setTitle("מגן התוכן")
+            .setTitle("מגן +")
             .setSubtitle("אימות ביומטרי")
             .setDescription("אשר כניסה באמצעות טביעת אצבע או ביומטריה של המכשיר.")
             .setNegativeButton("שימוש בקוד", executor) { _, _ -> }
@@ -253,7 +253,7 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, dp(78)))
 
         hero.addView(TextView(this).apply {
-            text = "מגן התוכן"
+            text = "מגן +"
             textSize = 28f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
@@ -562,7 +562,7 @@ class MainActivity : Activity() {
             addButton("🔐 הפעל הרשאת מנהל המכשיר", Color.rgb(55,78,102)) {
                 val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                     putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, BlockerDeviceAdminReceiver.component(this@MainActivity))
-                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "הרשאה זו מאפשרת למגן התוכן להשתלב במצב ניהול המכשיר. חסימת הסרה מתוך הגדרות תעבוד רק לאחר שהמכשיר הוגדר כ-Device Owner/Profile Owner.")
+                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "הרשאה זו מאפשרת למגן + להשתלב במצב ניהול המכשיר. חסימת הסרה מתוך הגדרות תעבוד רק לאחר שהמכשיר הוגדר כ-Device Owner/Profile Owner.")
                 }
                 startActivity(intent)
             }
