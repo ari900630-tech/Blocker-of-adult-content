@@ -39,9 +39,16 @@ class AppBlockAccessibilityService : AccessibilityService() {
 
         // Protected browsers may only be opened through the protected search
         // inside this app. A direct launch is never authorized by the gate.
-        if (isProtectedBrowser && temporaryAllowedPackage != pkg && now >= persistedUnlockUntil) {
+        val browserAllowedUntil = controlPrefs.getLong("browser_allowed_until", 0L)
+        if (isProtectedBrowser && now >= browserAllowedUntil && temporaryAllowedPackage != pkg) {
             unlockedPackage = null
             launchGate(pkg, allowAuthentication = false)
+            return
+        }
+
+        if (isProtectedBrowser && (temporaryAllowedPackage == pkg || now < browserAllowedUntil)) {
+            temporaryAllowedPackage = pkg
+            temporaryAllowedUntil = maxOf(temporaryAllowedUntil, browserAllowedUntil)
             return
         }
 
@@ -87,8 +94,13 @@ class AppBlockAccessibilityService : AccessibilityService() {
     }
 
     fun allowPackageFromProtectedApp(pkg: String, durationMs: Long = 30_000L) {
+        val until = System.currentTimeMillis() + durationMs
+        getSharedPreferences("app_control", MODE_PRIVATE)
+            .edit()
+            .putLong("browser_allowed_until", until)
+            .apply()
         temporaryAllowedPackage = pkg
-        temporaryAllowedUntil = System.currentTimeMillis() + durationMs
+        temporaryAllowedUntil = until
         unlockedPackage = pkg
     }
 
