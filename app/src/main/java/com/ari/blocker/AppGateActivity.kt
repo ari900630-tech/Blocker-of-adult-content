@@ -3,6 +3,7 @@ package com.ari.blocker
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
@@ -62,7 +63,7 @@ class AppGateActivity : Activity() {
             gravity = Gravity.CENTER
         })
         root.addView(TextView(this).apply {
-            text = "אפשר להיכנס לדפדפן רק דרך "פתח חיפוש מוגן" בתוך מגן התוכן."
+            text = "אפשר להיכנס לדפדפן רק דרך חיפוש מוגן בתוך מגן התוכן."
             textSize = 16f
             setTextColor(Color.rgb(80, 100, 120))
             gravity = Gravity.CENTER
