@@ -25,9 +25,12 @@ class AppBlockAccessibilityService : AccessibilityService() {
         if (pkg == packageName) return
 
         val isProtectedBrowser = PROTECTED_BROWSER_PACKAGES.contains(pkg)
-        val blockedByUser = getSharedPreferences("app_control", MODE_PRIVATE)
+        val controlPrefs = getSharedPreferences("app_control", MODE_PRIVATE)
+        val blockedByUser = controlPrefs
             .getStringSet("blocked_apps", emptySet())
             ?.contains(pkg) == true
+        val now = System.currentTimeMillis()
+        val persistedUnlockUntil = controlPrefs.getLong("unlock_until_$pkg", 0L)
 
         if (!isProtectedBrowser && !blockedByUser) {
             unlockedPackage = null
@@ -36,22 +39,26 @@ class AppBlockAccessibilityService : AccessibilityService() {
 
         // Protected browsers may only be opened through the protected search
         // inside this app. A direct launch is never authorized by the gate.
-        if (isProtectedBrowser && temporaryAllowedPackage != pkg) {
+        if (isProtectedBrowser && temporaryAllowedPackage != pkg && now >= persistedUnlockUntil) {
             unlockedPackage = null
             launchGate(pkg, allowAuthentication = false)
             return
         }
 
-        if (temporaryAllowedPackage == pkg && System.currentTimeMillis() < temporaryAllowedUntil) {
+        if (temporaryAllowedPackage == pkg && now < temporaryAllowedUntil) {
             unlockedPackage = pkg
             temporaryAllowedPackage = null
             temporaryAllowedUntil = 0L
             return
         }
 
+        if (persistedUnlockUntil > now) {
+            unlockedPackage = pkg
+            return
+        }
+
         if (unlockedPackage == pkg) return
 
-        val now = System.currentTimeMillis()
         if (now - gateLaunchAt < 1200L) return
         gateLaunchAt = now
 
@@ -69,6 +76,11 @@ class AppBlockAccessibilityService : AccessibilityService() {
     }
 
     fun allowCurrentPackage(pkg: String) {
+        val until = System.currentTimeMillis() + 5 * 60_000L
+        getSharedPreferences("app_control", MODE_PRIVATE)
+            .edit()
+            .putLong("unlock_until_$pkg", until)
+            .apply()
         unlockedPackage = pkg
         temporaryAllowedPackage = null
         temporaryAllowedUntil = 0L
