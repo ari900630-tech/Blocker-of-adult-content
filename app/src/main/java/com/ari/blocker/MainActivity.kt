@@ -2,6 +2,7 @@ package com.ari.blocker
 
 import android.Manifest
 import android.app.Activity
+import android.app.admin.DevicePolicyManager
 import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
@@ -315,7 +316,33 @@ class MainActivity : Activity() {
             if (BlockerVpnService.isProtectionActive) requestStopProtection()
             else showMessage("ההגנה כבר מושבתת.")
         }
-        addText("הסרת האפליקציה אינה זמינה מתוך האפליקציה. Android עדיין מאפשר למשתמש להסיר אפליקציה רגילה דרך הגדרות המכשיר; כדי למנוע הסרה גם משם נדרש מצב Device Owner/מכשיר מנוהל.")
+        addDeviceManagementControls()
+    }
+
+    private fun addDeviceManagementControls() {
+        val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val isOwner = dpm.isDeviceOwnerApp(packageName) || dpm.isProfileOwnerApp(packageName)
+        val text = if (isOwner) {
+            "🔒 נעילת הסרה פעילה: המכשיר מנוהל והסרת האפליקציה נחסמה."
+        } else {
+            "🔓 נעילת הסרה עדיין לא פעילה. כדי ש-Android יחסום את הסרה מתוך הגדרות המכשיר, האפליקציה חייבת להיות Device Owner/Profile Owner."
+        }
+        addText(text)
+        if (isOwner) {
+            addButton("✓ הגנת הסרה פעילה", Color.rgb(46,125,50), selected = true) {
+                BlockerDeviceAdminReceiver.enforceUninstallBlocked(this)
+                showMessage("הגנת ההסרה מופעלת.")
+            }
+        } else {
+            addButton("🔐 הפעל הרשאת מנהל המכשיר", Color.rgb(55,78,102)) {
+                val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                    putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, BlockerDeviceAdminReceiver.component(this@MainActivity))
+                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "הרשאה זו מאפשרת למגן התוכן להשתלב במצב ניהול המכשיר. חסימת הסרה מתוך הגדרות תעבוד רק לאחר שהמכשיר הוגדר כ-Device Owner/Profile Owner.")
+                }
+                startActivity(intent)
+            }
+        }
+        addText("הערה: הרשאת מנהל המכשיר לבדה אינה הופכת את האפליקציה ל-Device Owner. במכשיר שכבר מוגדר לשימוש, Android דורש תהליך ניהול/Provisioning מתאים כדי לקבל את היכולת לחסום הסרה. המראה המדויק של מסך ההגדרות תלוי בגרסת Android וביצרן.")
     }
 
     private fun addCardTitle(text: String) {
