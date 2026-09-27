@@ -423,7 +423,7 @@ class MainActivity : Activity() {
             row.addView(android.widget.Switch(this).apply{
                 isChecked=locked;scaleX=1.08f;scaleY=1.08f
                 setOnCheckedChangeListener { _,checked ->
-                    val s=getSharedPreferences("app_control",MODE_PRIVATE).getStringSet("blocked_apps",emptySet()).toMutableSet()
+                    val s=getSharedPreferences("app_control",MODE_PRIVATE).getStringSet("blocked_apps",emptySet())?.toMutableSet() ?: mutableSetOf()
                     if(checked)s.add(pkg) else s.remove(pkg)
                     getSharedPreferences("app_control",MODE_PRIVATE).edit().putStringSet("blocked_apps",s).apply()
                     row.background=rounded(if(checked)Color.rgb(226,255,245) else Color.argb(245,255,255,255),20)
