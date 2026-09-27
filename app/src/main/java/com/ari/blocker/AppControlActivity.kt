@@ -24,14 +24,17 @@ class AppControlActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(18), dp(18), dp(18))
-            setBackgroundColor(Color.rgb(246, 248, 252))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(151, 133, 247), Color.rgb(91, 42, 190), Color.rgb(48, 10, 120))
+            )
             layoutDirection = LinearLayout.LAYOUT_DIRECTION_RTL
         }
 
         root.addView(TextView(this).apply {
             text = "📱  כל האפליקציות בטלפון"
             textSize = 26f
-            setTextColor(Color.rgb(16, 42, 67))
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             setPadding(0, 0, 0, dp(8))
         })
@@ -39,7 +42,7 @@ class AppControlActivity : Activity() {
         root.addView(TextView(this).apply {
             text = "כאן מופיעות האפליקציות המותקנות במכשיר. לחץ על אפליקציה כדי לנעול או לפתוח אותה. אפליקציה נעולה תבקש קוד גישה בעת הפתיחה."
             textSize = 15f
-            setTextColor(Color.rgb(80, 100, 120))
+            setTextColor(Color.WHITE)
             setPadding(0, 0, 0, dp(12))
         })
 
@@ -50,7 +53,7 @@ class AppControlActivity : Activity() {
             setTextColor(if (accessibilityOn) Color.rgb(46,125,50) else Color.rgb(183,28,28))
             setPadding(dp(12), dp(12), dp(12), dp(12))
             gravity = Gravity.CENTER
-            background = rounded(Color.WHITE, 18)
+            background = rounded(Color.argb(245, 255, 255, 255), 18)
         }, LinearLayout.LayoutParams(-1, dp(54)).apply { bottomMargin = dp(10) })
 
         if (!accessibilityOn) {
@@ -90,7 +93,7 @@ class AppControlActivity : Activity() {
                 setPadding(dp(10), dp(6), dp(10), dp(6))
                 isClickable = true
                 isFocusable = true
-                background = rounded(if (initiallyLocked) Color.rgb(232,244,236) else Color.WHITE, 18)
+                background = rounded(if (initiallyLocked) Color.rgb(229, 255, 247) else Color.argb(245, 255, 255, 255), 18)
             }
             if (icon != null) row.addView(ImageView(this).apply {
                 setImageDrawable(icon)
@@ -146,7 +149,7 @@ class AppControlActivity : Activity() {
         title.setTextColor(if (locked) Color.rgb(27,94,32) else Color.rgb(30,45,60))
         state.text = if (locked) "✓ נעולה" else "פתוחה"
         state.setTextColor(if (locked) Color.rgb(27,94,32) else Color.rgb(80,100,120))
-        row.background = rounded(if (locked) Color.rgb(232,244,236) else Color.WHITE, 18)
+        row.background = rounded(if (locked) Color.rgb(229, 255, 247) else Color.argb(245, 255, 255, 255), 18)
     }
 
     private fun askToDisableLock(pkg: String, label: String, row: LinearLayout, title: TextView, state: TextView) {
