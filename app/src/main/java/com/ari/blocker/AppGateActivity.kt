@@ -30,11 +30,57 @@ class AppGateActivity : Activity() {
             finish()
             return
         }
+        if (!intent.getBooleanExtra("allow_authentication", true) &&
+            AppBlockAccessibilityService.PROTECTED_BROWSER_PACKAGES.contains(packageNameBlocked)) {
+            showBrowserOnlyMessage()
+            return
+        }
         showGate()
     }
 
     override fun onBackPressed() {
         // Do not reveal the protected app by pressing Back.
+    }
+
+    private fun showBrowserOnlyMessage() {
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(28), dp(28), dp(28), dp(28))
+            setBackgroundColor(Color.rgb(246, 248, 252))
+            layoutDirection = LinearLayout.LAYOUT_DIRECTION_RTL
+        }
+        root.addView(TextView(this).apply {
+            text = "🛡️"
+            textSize = 54f
+            gravity = Gravity.CENTER
+        })
+        root.addView(TextView(this).apply {
+            text = "הדפדפן נעול"
+            textSize = 25f
+            setTextColor(Color.rgb(16, 42, 67))
+            gravity = Gravity.CENTER
+        })
+        root.addView(TextView(this).apply {
+            text = "אפשר להיכנס לדפדפן רק דרך "פתח חיפוש מוגן" בתוך מגן התוכן."
+            textSize = 16f
+            setTextColor(Color.rgb(80, 100, 120))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, dp(18))
+        })
+        root.addView(Button(this).apply {
+            text = "חזרה למגן התוכן"
+            isAllCaps = false
+            setOnClickListener {
+                val launch = packageManager.getLaunchIntentForPackage(packageName)
+                if (launch != null) {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    startActivity(launch)
+                }
+                finish()
+            }
+        }, LinearLayout.LayoutParams(-1, dp(56)))
+        setContentView(root)
     }
 
     private fun showGate() {
