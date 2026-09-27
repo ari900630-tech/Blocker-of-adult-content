@@ -307,12 +307,15 @@ class MainActivity : Activity() {
         addText("הגדרות אבטחה, קוד, בקרת אפליקציות ועדכונים.")
         addButton("🔐 סוג קוד / טביעת אצבע", Color.rgb(21,101,192)) { setPin() }
         addButton("📱 כל האפליקציות בטלפון") { openAppControl() }
-        addButton("🗑️ הסרת האפליקציה", Color.rgb(183,28,28)) { requestUninstall() }
         addButton("🙈 הסתר את סמל האפליקציה") { hideLauncherIcon() }
         addButton("👁️ הצג את סמל האפליקציה") { showLauncherIcon() }
         addButton("↻ עדכון האפליקציה", Color.rgb(46,125,50)) { AppUpdater.downloadAndInstall(this) }
         addButton("⚙ פתח הגדרות VPN") { startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }
-        addText("הערת Android: מחיקת 'נתוני האפליקציה' מאפס את האחסון הפרטי של האפליקציה. אפליקציה רגילה אינה יכולה למנוע זאת. לאחר אתחול רגיל ניתן להפעיל מחדש אוטומטית את ההגנה אם הרשאת VPN עדיין קיימת.")
+        addButton("⏸ השבת את ההגנה", Color.rgb(183,28,28)) {
+            if (BlockerVpnService.isProtectionActive) requestStopProtection()
+            else showMessage("ההגנה כבר מושבתת.")
+        }
+        addText("הסרת האפליקציה אינה זמינה מתוך האפליקציה. Android עדיין מאפשר למשתמש להסיר אפליקציה רגילה דרך הגדרות המכשיר; כדי למנוע הסרה גם משם נדרש מצב Device Owner/מכשיר מנוהל.")
     }
 
     private fun addCardTitle(text: String) {
