@@ -9,6 +9,8 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.widget.LinearLayout
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
@@ -35,7 +37,7 @@ class AppControlActivity : Activity() {
         }
 
         root.addView(TextView(this).apply {
-            text = "ניהול אפליקציות"
+            text = "🔐  נעילת אפליקציות"
             textSize = 26f
             setTextColor(Color.rgb(16, 42, 67))
             gravity = Gravity.CENTER
@@ -43,7 +45,7 @@ class AppControlActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "הפעל את שירות הנגישות של מגן התוכן, ואז סמן אפליקציות שידרשו קוד לפני הכניסה. הקוד נדרש מחדש כשעוזבים וחוזרים לאפליקציה."
+            text = "בחר אפליקציות שייפתחו רק אחרי סיסמה. אפשר להדליק או לכבות נעילה לכל אפליקציה בנפרד."
             textSize = 15f
             setTextColor(Color.rgb(80, 100, 120))
             setPadding(0, 0, 0, dp(12))
@@ -57,6 +59,7 @@ class AppControlActivity : Activity() {
             setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         }
         root.addView(access)
+        root.addView(TextView(this).apply { text = "האפליקציות שלי"; textSize = 20f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.rgb(16,42,67)); setPadding(0, dp(12), 0, dp(10)) })
 
         val scroll = ScrollView(this)
         val list = LinearLayout(this).apply {
@@ -79,7 +82,7 @@ class AppControlActivity : Activity() {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(14), dp(6), dp(8), dp(6))
-                setBackgroundColor(Color.WHITE)
+                background = rounded(Color.WHITE, 18)
             }
             val title = TextView(this).apply {
                 text = label
@@ -89,7 +92,7 @@ class AppControlActivity : Activity() {
             }
             row.addView(title, LinearLayout.LayoutParams(0, dp(54), 1f))
             val sw = Switch(this).apply {
-                text = "קוד"
+                text = "נעילה"
                 isChecked = prefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
                 setOnCheckedChangeListener { _, checked ->
                     val current = prefs.getStringSet("blocked_apps", emptySet())?.toMutableSet() ?: mutableSetOf()
@@ -112,6 +115,8 @@ class AppControlActivity : Activity() {
             android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
         ).any { it.resolveInfo.serviceInfo.packageName == packageName }
     }
+
+    private fun rounded(color: Int, radius: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(radius).toFloat() }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 }
