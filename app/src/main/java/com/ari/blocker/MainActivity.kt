@@ -86,7 +86,7 @@ class MainActivity : Activity() {
         }
         val navItems = listOf(
             Triple("⌂", "ראשי", 0),
-            Triple("📱", "האפליקציות שלי", 1),
+            Triple("▦", "האפליקציות שלי", 1),
             Triple("⚙", "הגדרות", 2)
         )
         navItems.forEach { (symbol, label, index) ->
@@ -200,24 +200,14 @@ class MainActivity : Activity() {
 
     private fun showHome() {
         content.removeAllViews()
-        addCardTitle("מרכז ההגנה")
+        addCardTitle("App Lock")
+        addText("מגן התוכן • אבטחה ושליטה באפליקציות")
         val active = BlockerVpnService.isProtectionActive
-        status = TextView(this).apply {
-            text = if (active) "●  ההגנה פעילה" else "○  ההגנה כבויה"
-            textSize = 19f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(if (active) Color.rgb(46,125,50) else Color.rgb(183,28,28))
-            gravity = Gravity.CENTER
-            setPadding(dp(16), dp(18), dp(16), dp(18))
-            background = rounded(Color.argb(235, 255, 255, 255), 20)
-        }
-        content.addView(status, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(14) })
 
-        addText("הכל במקום אחד: הגנת גלישה, חיפוש מוגן ונעילת אפליקציות. הפעל את מה שצריך ותן למגן לעשות את העבודה.")
+        addText("הכל במקום אחד: הגנת גלישה, חיפוש מוגן ונעילת אפליקציות. הפעל את ההגנה מהמתג למטה.")
 
         addProtectionSwitch(active)
-        addButton("📱  האפליקציות שלי בטלפון", Color.rgb(55, 78, 102)) { openAppControl() }
-        addButton("🌐  פתח חיפוש בכרום", Color.rgb(21, 101, 192)) { requestProtectedSearch() }
+        addButton("🌐  פתח חיפוש מוגן", Color.rgb(88, 231, 226)) { requestProtectedSearch() }
         addButton("✨  אפשרויות נוספות") { showSettings() }
     }
 
@@ -226,11 +216,11 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(8), dp(12), dp(8))
-            background = rounded(if (active) Color.argb(245, 255, 255, 255) else Color.argb(225, 255, 255, 255), 20)
+            background = rounded(Color.argb(245, 255, 255, 255), 24)
         }
         row.addView(TextView(this).apply {
-            text = if (active) "●  ההגנה פעילה" else "○  ההגנה כבויה"
-            textSize = 18f
+            text = if (active) "●  Protection ON" else "○  Protection OFF"
+            textSize = 17f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(58, 37, 104))
             gravity = Gravity.CENTER_VERTICAL
@@ -331,7 +321,6 @@ class MainActivity : Activity() {
         addCardTitle("הגדרות המגן")
         addText("הגדרות אבטחה, קוד, בקרת אפליקציות ועדכונים.")
         addButton("🔐 סוג קוד / טביעת אצבע", Color.rgb(21,101,192)) { setPin() }
-        addButton("📱 האפליקציות שלי בטלפון") { openAppControl() }
         addButton("🙈 הסתר את סמל האפליקציה") { hideLauncherIcon() }
         addButton("👁️ הצג את סמל האפליקציה") { showLauncherIcon() }
         addButton("↻ עדכון האפליקציה", Color.rgb(46,125,50)) { AppUpdater.downloadAndInstall(this) }
@@ -612,10 +601,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (::status.isInitialized && unlocked && !BlockerVpnService.isProtectionActive) {
-            status.text = "○  ההגנה כבויה"
-            status.setTextColor(Color.rgb(183,28,28))
-        }
+        if (unlocked && selectedNav == 0) showHome()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
