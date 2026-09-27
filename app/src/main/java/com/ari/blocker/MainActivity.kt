@@ -121,7 +121,8 @@ class MainActivity : Activity() {
         addCardTitle("🔐 קוד גישה")
         addText("הזן את הקוד שהגדרת. אפשר לאשר גם דרך כפתור ✓ במקלדת.")
         val mode = prefs.getString("auth_mode", "PIN4")
-        val input = EditText(this).apply {
+        val input = EditText(this)
+        input.apply {
             hint = if (mode == "PIN4") "4 ספרות" else "קוד גישה"
             inputType = if (mode == "PIN4") InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
