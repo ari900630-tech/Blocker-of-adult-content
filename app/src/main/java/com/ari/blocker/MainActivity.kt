@@ -465,12 +465,6 @@ class MainActivity : Activity() {
             showMessage("הגדר קוד גישה לפני הסרה.")
             return
         }
-        val component = ComponentName(this, BlockerDeviceAdminReceiver::class.java)
-        val manager = getSystemService(DevicePolicyManager::class.java)
-        if (!manager.isAdminActive(component) || !BlockerVpnService.isProtectionActive) {
-            showMessage("לפני הסרה יש להפעיל גם הגנת הסרה וגם הגנת VPN.")
-            return
-        }
         val input = EditText(this).apply {
             hint = "קוד גישה"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
@@ -478,16 +472,41 @@ class MainActivity : Activity() {
             setSingleLine(true)
         }
         AlertDialog.Builder(this)
-            .setTitle("אישור הסרה")
-            .setMessage("הזן קוד כדי לפתוח את מסך ההסרה.")
+            .setTitle("הסרת האפליקציה")
+            .setMessage("הזן את קוד הגישה כדי להמשיך.")
             .setView(input)
-            .setPositiveButton("המשך") { _, _ ->
-                if (hash(input.text.toString()) == pinHash) {
-                    startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
-                } else showMessage("קוד שגוי.")
-            }
+            .setPositiveButton("המשך", null)
             .setNegativeButton("ביטול", null)
-            .show()
+            .create().also { dialog ->
+                dialog.setOnShowListener {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                        if (hash(input.text.toString()) != pinHash) {
+                            input.error = "קוד שגוי"
+                            return@setOnClickListener
+                        }
+                        dialog.dismiss()
+
+                        val component = ComponentName(this, BlockerDeviceAdminReceiver::class.java)
+                        val manager = getSystemService(DevicePolicyManager::class.java)
+                        if (manager.isAdminActive(component)) {
+                            AlertDialog.Builder(this)
+                                .setTitle("הגנת ההסרה פעילה")
+                                .setMessage("כדי להסיר את מגן התוכן, כבה קודם את 'הגנת ההסרה' בהגדרות המכשיר.")
+                                .setPositiveButton("פתח הגדרות") { _, _ ->
+                                    startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
+                                }
+                                .setNegativeButton("ביטול", null)
+                                .show()
+                            return@setOnShowListener
+                        }
+
+                        if (BlockerVpnService.isProtectionActive) {
+                            stopProtection()
+                        }
+                        startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
+                    }
+                }
+            }.show()
     }
 
     private fun hideLauncherIcon() {
@@ -538,6 +557,7 @@ class MainActivity : Activity() {
         if (requestCode == VPN_REQUEST) {
             if (resultCode == RESULT_OK) {
                 startProtection()
+                showHome()
             } else {
                 showHome()
                 showMessage("הפעלת ההגנה בוטלה. אפשר לנסות שוב.")
