@@ -28,7 +28,7 @@ class BlockerVpnService : VpnService() {
         private const val CHANNEL_ID = "blocker_protection"
         private const val NOTIFICATION_ID = 1001
         private const val DNS_IP = "10.10.0.1"
-        private const val UPSTREAM_DNS = "1.1.1.1"
+        private const val UPSTREAM_DNS = "1.1.1.3"
         private const val BLOCKLIST_URL =
             "https://raw.githubusercontent.com/ari900630-tech/Blocker-of-adult-content/main/blocklist/domains.txt"
 
