@@ -222,7 +222,7 @@ class MainActivity : Activity() {
             if (BlockerVpnService.isProtectionActive) requestStopProtection()
             else requestVpnPermission()
         }
-        addButton("🔐  נעילת אפליקציות", Color.rgb(55, 78, 102)) { openAppControl() }
+        addButton("📱  כל האפליקציות בטלפון", Color.rgb(55, 78, 102)) { openAppControl() }
         addButton("🌐  פתח חיפוש בכרום", Color.rgb(21, 101, 192)) { requestProtectedSearch() }
         addButton("✨  אפשרויות נוספות") { showSettings() }
     }
@@ -306,7 +306,7 @@ class MainActivity : Activity() {
         addCardTitle("הגדרות המגן")
         addText("הגדרות אבטחה, קוד, בקרת אפליקציות ועדכונים.")
         addButton("🔐 סוג קוד / טביעת אצבע", Color.rgb(21,101,192)) { setPin() }
-        addButton("📱 ניהול אפליקציות מוגנות") { openAppControl() }
+        addButton("📱 כל האפליקציות בטלפון") { openAppControl() }
         addButton("🗑️ הסרת האפליקציה", Color.rgb(183,28,28)) { requestUninstall() }
         addButton("🙈 הסתר את סמל האפליקציה") { hideLauncherIcon() }
         addButton("👁️ הצג את סמל האפליקציה") { showLauncherIcon() }
