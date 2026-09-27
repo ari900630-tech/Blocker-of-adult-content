@@ -22,7 +22,7 @@ object AppUpdater {
         ) {
             AlertDialog.Builder(activity)
                 .setTitle("נדרש אישור לעדכון")
-                .setMessage("כדי שמגן התוכן יוכל להתקין עדכונים שהורדו מתוך האפליקציה, יש לאפשר התקנת אפליקציות ממקור זה.")
+                .setMessage("כדי שמגן + יוכל להתקין עדכונים שהורדו מתוך האפליקציה, יש לאפשר התקנת אפליקציות ממקור זה.")
                 .setPositiveButton("פתיחת הגדרות") { _, _ ->
                     activity.startActivity(
                         Intent(
@@ -38,7 +38,7 @@ object AppUpdater {
 
         val manager = activity.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(APK_URL))
-            .setTitle("עדכון מגן התוכן")
+            .setTitle("עדכון מגן +")
             .setDescription("מוריד את הגרסה החדשה…")
             .setMimeType("application/vnd.android.package-archive")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
