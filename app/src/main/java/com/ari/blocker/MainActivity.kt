@@ -190,10 +190,29 @@ class MainActivity : Activity() {
                 }
                 card.addView(row)
             }
+        } else if (mode == "PATTERN") {
+            card.addView(TextView(this).apply {
+                text = "צייר את סיסמת ההחלקה"
+                textSize = 15f
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(-1, dp(34)))
+            val pattern = PatternLockView(this)
+            pattern.onPatternComplete = { value ->
+                if (hash("PATTERN:" + value.joinToString(",")) == prefs.getString("pin_hash", null)) {
+                    unlocked = true
+                    showHome()
+                } else {
+                    pattern.clearPattern()
+                    showMessage("סיסמה שגויה. נסה שוב.")
+                }
+            }
+            card.addView(pattern, LinearLayout.LayoutParams(-1, dp(230)))
         } else {
             val input=EditText(this).apply {
                 hint="קוד גישה"; inputType=InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
                 textSize=20f; gravity=Gravity.CENTER; setSingleLine(true)
+                setTextColor(Color.WHITE)
             }
             card.addView(input,LinearLayout.LayoutParams(-1,dp(58)).apply{bottomMargin=dp(10)})
             addButton("✓ אישור",Color.rgb(88,231,226)){verifyMainCode(input)}
@@ -522,7 +541,8 @@ class MainActivity : Activity() {
         addCardTitle("⚙️ הגדרות")
         val cards=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         cards.addView(settingsSection("🔐","אבטחה","סוג קוד / טביעת אצבע"){setPin()})
-        cards.addView(settingsSection("🙈","סמל האפליקציה","הסתר / הצג"){hideLauncherIcon()})
+        val iconVisible = isLauncherIconVisible()
+        cards.addView(settingsSection("🙈","סמל האפליקציה", if (iconVisible) "לחץ כדי להסתיר" else "לחץ כדי להחזיר") { toggleLauncherIcon() })
         cards.addView(settingsSection("↻","עדכון","התקן את הגרסה האחרונה"){AppUpdater.downloadAndInstall(this)})
         cards.addView(settingsSection("🌐","הגנת גלישה","הגדרות VPN"){startActivity(Intent(Settings.ACTION_VPN_SETTINGS))})
         cards.addView(settingsSection("⏸","כיבוי ההגנה","כיבוי מוגן בקוד"){
@@ -691,10 +711,10 @@ class MainActivity : Activity() {
     }
 
     private fun setPin() {
-        val modes = arrayOf("4 ספרות", "קוד באורך חופשי", "טביעת אצבע / ביומטריה")
-        val keys = arrayOf("PIN4", "PASSWORD", "BIOMETRIC")
+        val modes = arrayOf("4 ספרות בלבד", "מספרים ומילים — באורך חופשי", "סיסמת פס החלקה")
+        val keys = arrayOf("PIN4", "PASSWORD", "PATTERN")
         AlertDialog.Builder(this)
-            .setTitle("בחר דרך כניסה")
+            .setTitle("בחירת הסיסמה")
             .setSingleChoiceItems(modes, -1) { dialog, which ->
                 dialog.dismiss()
                 askForNewCode(keys[which])
@@ -710,25 +730,73 @@ class MainActivity : Activity() {
             setPadding(dp(22), 0, dp(22), 0)
         }
         val oldInput = EditText(this).apply {
-            hint = if (oldHash == null) "אין קוד קודם" else "קוד נוכחי"
+            hint = if (oldHash == null) "אין סיסמה קודמת" else "סיסמה נוכחית"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setSingleLine(true)
         }
         if (oldHash != null) box.addView(oldInput, LinearLayout.LayoutParams(-1, dp(56)))
+
+        if (mode == "PATTERN") {
+            box.addView(TextView(this).apply {
+                text = "צייר סיסמה חדשה על 9 העיגולים"
+                textSize = 15f
+                setTextColor(Color.rgb(72,50,130))
+                gravity = Gravity.CENTER
+                setPadding(0, dp(8), 0, dp(4))
+            }, LinearLayout.LayoutParams(-1, dp(42)))
+            val pattern = PatternLockView(this)
+            box.addView(pattern, LinearLayout.LayoutParams(-1, dp(250)))
+            var chosen: List<Int>? = null
+            pattern.onPatternComplete = { value ->
+                chosen = value
+            }
+
+            AlertDialog.Builder(this)
+                .setTitle("בחירת סיסמת פס החלקה")
+                .setView(box)
+                .setPositiveButton("שמירה", null)
+                .setNegativeButton("ביטול", null)
+                .create().also { dialog ->
+                    dialog.setOnShowListener {
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                            if (oldHash != null && hash(oldInput.text.toString()) != oldHash) {
+                                oldInput.error = "סיסמה נוכחית שגויה"
+                                return@setOnClickListener
+                            }
+                            val patternValue = chosen
+                            if (patternValue == null || patternValue.size < 4) {
+                                showMessage("יש לצייר לפחות 4 עיגולים.")
+                                return@setOnClickListener
+                            }
+                            prefs.edit()
+                                .putString("pin_hash", hash("PATTERN:" + patternValue.joinToString(",")))
+                                .putString("auth_mode", "PATTERN")
+                                .apply()
+                            unlocked = true
+                            dialog.dismiss()
+                            showMessage("סיסמת ההחלקה נשמרה.")
+                        }
+                    }
+                }.show()
+            return
+        }
+
         val newInput = EditText(this).apply {
             hint = when (mode) {
-                "PIN4" -> "קוד חדש — בדיוק 4 ספרות"
-                "PASSWORD" -> "קוד חדש — באורך לבחירתך"
-                else -> "קוד גיבוי — לפחות 4 תווים"
+                "PIN4" -> "סיסמה חדשה — בדיוק 4 ספרות"
+                else -> "סיסמה חדשה — מספרים ומילים"
             }
-            inputType = if (mode == "PIN4") InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            inputType = if (mode == "PIN4")
+                InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            else
+                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_ACTION_DONE
             setSingleLine(true)
         }
         box.addView(newInput, LinearLayout.LayoutParams(-1, dp(56)))
 
         AlertDialog.Builder(this)
-            .setTitle("הגדרת דרך כניסה")
+            .setTitle("בחירת הסיסמה")
             .setView(box)
             .setPositiveButton("שמירה", null)
             .setNegativeButton("ביטול", null)
@@ -736,19 +804,19 @@ class MainActivity : Activity() {
                 dialog.setOnShowListener {
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                         if (oldHash != null && hash(oldInput.text.toString()) != oldHash) {
-                            oldInput.error = "קוד נוכחי שגוי"
+                            oldInput.error = "סיסמה נוכחית שגויה"
                             return@setOnClickListener
                         }
                         val value = newInput.text.toString()
                         val valid = if (mode == "PIN4") value.length == 4 && value.all { it.isDigit() } else value.length >= 4
                         if (!valid) {
-                            newInput.error = "קוד לא תקין"
+                            newInput.error = "הסיסמה לא תקינה"
                             return@setOnClickListener
                         }
                         prefs.edit().putString("pin_hash", hash(value)).putString("auth_mode", mode).apply()
                         unlocked = true
                         dialog.dismiss()
-                        showMessage("ההגדרה נשמרה.")
+                        showMessage("הסיסמה נשמרה.")
                     }
                 }
             }.show()
@@ -771,20 +839,25 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
-    private fun hideLauncherIcon() {
+    private fun isLauncherIconVisible(): Boolean {
         val visible = ComponentName(this, "com.ari.blocker.LauncherAlias")
-        val hidden = ComponentName(this, "com.ari.blocker.HiddenLauncherAlias")
-        packageManager.setComponentEnabledSetting(visible, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
-        packageManager.setComponentEnabledSetting(hidden, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
-        showMessage("הסמל הוסתר. לחיצה כפולה על המקום השקוף פותחת את האפליקציה.")
+        val state = packageManager.getComponentEnabledSetting(visible)
+        return state != PackageManager.COMPONENT_ENABLED_STATE_DISABLED
     }
 
-    private fun showLauncherIcon() {
+    private fun toggleLauncherIcon() {
         val visible = ComponentName(this, "com.ari.blocker.LauncherAlias")
         val hidden = ComponentName(this, "com.ari.blocker.HiddenLauncherAlias")
-        packageManager.setComponentEnabledSetting(hidden, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
-        packageManager.setComponentEnabledSetting(visible, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
-        showMessage("הסמל הוחזר.")
+        if (isLauncherIconVisible()) {
+            packageManager.setComponentEnabledSetting(visible, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+            packageManager.setComponentEnabledSetting(hidden, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+            showMessage("הסמל הוסתר.")
+        } else {
+            packageManager.setComponentEnabledSetting(hidden, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+            packageManager.setComponentEnabledSetting(visible, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+            showMessage("הסמל הוחזר.")
+        }
+        showSettings()
     }
 
     private fun requestNotificationPermissionIfNeeded() {
