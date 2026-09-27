@@ -57,7 +57,7 @@ class MainActivity : Activity() {
             textSize = 34f
         }, LinearLayout.LayoutParams(dp(50), dp(54)))
         top.addView(TextView(this).apply {
-            text = "מגן התוכן\nהגנה ובקרת אפליקציות"
+            text = "מגן התוכן\nשקט. שליטה. הגנה."
             textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(16, 42, 67))
@@ -81,12 +81,19 @@ class MainActivity : Activity() {
             setPadding(dp(8), dp(8), dp(8), dp(8))
             background = rounded(Color.WHITE, 22)
         }
-        listOf("ראשי", "חסימות", "הגדרות").forEachIndexed { index, label ->
-            nav.addView(Button(this).apply {
-                text = label
-                textSize = 13f
-                isAllCaps = false
-                background = rounded(if (index == 0) Color.rgb(230, 239, 250) else Color.WHITE, 16)
+        val navItems = listOf(
+            Triple("⌂", "ראשי", 0),
+            Triple("🛡", "חסימות", 1),
+            Triple("⚙", "הגדרות", 2)
+        )
+        navItems.forEach { (symbol, label, index) ->
+            nav.addView(TextView(this).apply {
+                text = symbol
+                textSize = 28f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(35, 58, 80))
+                contentDescription = label
+                background = rounded(if (index == 0) Color.rgb(220, 235, 248) else Color.WHITE, 18)
                 setOnClickListener {
                     if (!unlocked && prefs.getString("pin_hash", null) != null) {
                         showLockScreen()
@@ -98,7 +105,9 @@ class MainActivity : Activity() {
                         2 -> showSettings()
                     }
                 }
-            }, LinearLayout.LayoutParams(0, dp(52), 1f))
+            }, LinearLayout.LayoutParams(0, dp(54), 1f).apply {
+                leftMargin = dp(4); rightMargin = dp(4)
+            })
         }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(70)))
         setContentView(root)
@@ -177,7 +186,7 @@ class MainActivity : Activity() {
 
     private fun showHome() {
         content.removeAllViews()
-        addCardTitle("הגנה")
+        addCardTitle("מרכז ההגנה")
         val active = BlockerVpnService.isProtectionActive
         status = TextView(this).apply {
             text = if (active) "●  ההגנה פעילה" else "○  ההגנה כבויה"
@@ -190,14 +199,14 @@ class MainActivity : Activity() {
         }
         content.addView(status, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(14) })
 
-        addText("כאן אפשר להפעיל או לכבות את הגנת ה-DNS מאותו כפתור. החסימה אינה תלויה בהיסטוריית Chrome או בהיסטוריית אפליקציות.")
+        addText("הכל במקום אחד: הגנת גלישה, חיפוש מוגן ונעילת אפליקציות. הפעל את מה שצריך ותן למגן לעשות את העבודה.")
 
         addButton(if (active) "⏸ כבה הגנה" else "▶ הפעל הגנה", if (active) Color.rgb(183,28,28) else Color.rgb(46,125,50)) {
             if (BlockerVpnService.isProtectionActive) stopProtection() else requestVpnPermission()
         }
         addButton("🔎 פתח חיפוש מוגן") { openProtectedSearch() }
-        addButton("📱 בקרת אפליקציות") { openAppControl() }
-        addButton("🙈 הסתר את סמל האפליקציה") { hideLauncherIcon() }
+        addButton("🔐  נעילת אפליקציות", Color.rgb(55, 78, 102)) { openAppControl() }
+        addButton("✨  אפשרויות נוספות") { showSettings() }
     }
 
     private fun openAppControl() {
@@ -216,7 +225,7 @@ class MainActivity : Activity() {
 
     private fun showBlocks() {
         content.removeAllViews()
-        addCardTitle("רשימת חסימות")
+        addCardTitle("חסימת אתרים")
         addText("הוסף דומיינים שתרצה לחסום.")
         val input = EditText(this).apply {
             hint = "לדוגמה: example.com"
@@ -236,7 +245,7 @@ class MainActivity : Activity() {
 
     private fun showSettings() {
         content.removeAllViews()
-        addCardTitle("הגדרות")
+        addCardTitle("הגדרות המגן")
         addText("הגדרות אבטחה, קוד, בקרת אפליקציות ועדכונים.")
         addButton("🔐 סוג קוד / טביעת אצבע", Color.rgb(21,101,192)) { setPin() }
         addButton("📱 ניהול אפליקציות מוגנות") { openAppControl() }
@@ -273,7 +282,7 @@ class MainActivity : Activity() {
             textSize = 15f
             isAllCaps = false
             setTextColor(if (color == Color.WHITE) Color.rgb(30,45,60) else Color.WHITE)
-            background = rounded(color, 16)
+            background = rounded(color, 18)
             setOnClickListener { action() }
         }, LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(10) })
     }
