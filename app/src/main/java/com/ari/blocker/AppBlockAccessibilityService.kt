@@ -37,7 +37,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
         }
 
         if (isProtectedBrowser) {
-            val browserAllowedUntil = controlPrefs.getLong("browser_allowed_until", 0L)
+            val browserAllowedUntil = controlPrefs.getLong("browser_allowed_until_$pkg", 0L)
             val temporarilyAllowed = temporaryAllowedPackage == pkg && now < temporaryAllowedUntil
             val persistedAllowed = now < browserAllowedUntil
 
@@ -51,7 +51,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
             temporaryAllowedUntil = maxOf(temporaryAllowedUntil, browserAllowedUntil)
 
             if (isNonGoogleBrowserUrlVisible()) {
-                controlPrefs.edit().remove("browser_allowed_until").apply()
+                controlPrefs.edit().remove("browser_allowed_until_$pkg").apply()
                 temporaryAllowedPackage = null
                 temporaryAllowedUntil = 0L
                 unlockedPackage = null
@@ -135,10 +135,10 @@ class AppBlockAccessibilityService : AccessibilityService() {
         temporaryAllowedUntil = 0L
     }
 
-    fun allowPackageFromProtectedApp(pkg: String, durationMs: Long = 30_000L) {
+    fun allowPackageFromProtectedApp(pkg: String, durationMs: Long = 5 * 60_000L) {
         val until = System.currentTimeMillis() + durationMs
         getSharedPreferences("app_control", MODE_PRIVATE).edit()
-            .putLong("browser_allowed_until", until).apply()
+            .putLong("browser_allowed_until_$pkg", until).apply()
         temporaryAllowedPackage = pkg
         temporaryAllowedUntil = until
         unlockedPackage = pkg
