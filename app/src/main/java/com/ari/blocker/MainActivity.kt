@@ -256,9 +256,37 @@ class MainActivity : Activity() {
             if (domain.matches(Regex("[a-z0-9.-]+")) && domain.contains(".")) {
                 getSharedPreferences("custom_blocks", MODE_PRIVATE).edit().putBoolean(domain, true).apply()
                 BlockerVpnService.reloadCustomBlocks()
-                showMessage("הדומיין נוסף לרשימת החסימה.")
-                input.text.clear()
-            } else input.error = "דומיין לא תקין"
+                showBlocks()
+            } else {
+                input.error = "דומיין לא תקין"
+            }
+        }
+        val blocks = getSharedPreferences("custom_blocks", MODE_PRIVATE).all.keys.map { it.lowercase() }.sorted()
+        if (blocks.isNotEmpty()) {
+            addText("חסימות שהוספת")
+            blocks.forEach { domain ->
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(12), 0, dp(8), 0)
+                    background = rounded(Color.WHITE, 18)
+                }
+                row.addView(TextView(this).apply {
+                    text = domain
+                    textSize = 16f
+                    setTextColor(Color.rgb(30,45,60))
+                }, LinearLayout.LayoutParams(0, dp(54), 1f))
+                row.addView(Button(this).apply {
+                    text = "ביטול חסימה"
+                    isAllCaps = false
+                    setOnClickListener {
+                        getSharedPreferences("custom_blocks", MODE_PRIVATE).edit().remove(domain).apply()
+                        BlockerVpnService.reloadCustomBlocks()
+                        showBlocks()
+                    }
+                }, LinearLayout.LayoutParams(dp(120), dp(52)))
+                content.addView(row, LinearLayout.LayoutParams(-1, dp(62)).apply { bottomMargin = dp(8) })
+            }
         }
     }
 
@@ -355,6 +383,7 @@ class MainActivity : Activity() {
 
     private fun stopProtection() {
         prefs.edit().putBoolean("protection_enabled", false).apply()
+        BlockerVpnService.forceStop()
         stopService(Intent(this, BlockerVpnService::class.java))
         if (::status.isInitialized) {
             status.text = "○  ההגנה כבויה"
