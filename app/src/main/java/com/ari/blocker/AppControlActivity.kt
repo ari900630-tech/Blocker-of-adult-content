@@ -52,15 +52,29 @@ class AppControlActivity : Activity() {
 
         val accessibilityOn = isAccessibilityEnabled()
         val access = TextView(this).apply {
-            text = if (accessibilityOn) "✓ בקרת אפליקציות פעילה" else "⚠ יש להפעיל בקרת אפליקציות"
+            text = if (accessibilityOn) "✓ בקרת אפליקציות פעילה" else "⚠ בקרת אפליקציות כבויה"
             textSize = 16f
             setTextColor(if (accessibilityOn) Color.rgb(46,125,50) else Color.rgb(183,28,28))
             setPadding(dp(12), dp(12), dp(12), dp(12))
-            setOnClickListener {
-                openAccessibilitySettings()
-            }
+            gravity = Gravity.CENTER
+            background = rounded(Color.WHITE, 18)
         }
-        root.addView(access)
+        root.addView(access, LinearLayout.LayoutParams(-1, dp(54)).apply { bottomMargin = dp(10) })
+
+        root.addView(TextView(this).apply {
+            text = if (accessibilityOn) "אין צורך להפעיל שוב. אפשר לבחור עכשיו אילו אפליקציות לנעול." else "לחץ כאן כדי להפעיל את בקרת האפליקציות במערכת."
+            textSize = 14f
+            setTextColor(Color.rgb(80, 100, 120))
+            setPadding(dp(4), 0, dp(4), dp(10))
+        })
+
+        if (!accessibilityOn) {
+            root.addView(android.widget.Button(this).apply {
+                text = "▶ הפעל בקרת אפליקציות"
+                isAllCaps = false
+                setOnClickListener { openAccessibilitySettings() }
+            }, LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(8) })
+        }
 
         root.addView(TextView(this).apply {
             text = "האפליקציות שלי"
