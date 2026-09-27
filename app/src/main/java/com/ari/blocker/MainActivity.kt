@@ -223,9 +223,17 @@ class MainActivity : Activity() {
             if (BlockerVpnService.isProtectionActive) requestStopProtection()
             else requestVpnPermission()
         }
-        addButton("🔎 פתח חיפוש מוגן") { requestProtectedSearch() }
         addButton("🔐  נעילת אפליקציות", Color.rgb(55, 78, 102)) { openAppControl() }
         addButton("✨  אפשרויות נוספות") { showSettings() }
+    }
+
+    private fun requestProtectedSearch() {
+        val pinHash = prefs.getString("pin_hash", null)
+        if (pinHash == null) { showMessage("כדי לפתוח חיפוש מוגן צריך להגדיר קוד גישה."); return }
+        val input = EditText(this).apply { hint = "קוד גישה"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD; imeOptions = EditorInfo.IME_ACTION_DONE; setSingleLine(true) }
+        val dialog = AlertDialog.Builder(this).setTitle("פתיחת חיפוש מוגן").setMessage("הזן את קוד הגישה כדי לפתוח את החיפוש המוגן.").setView(input).setPositiveButton("פתח", null).setNegativeButton("ביטול", null).create()
+        dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { if (hash(input.text.toString()) != pinHash) input.error = "קוד שגוי" else { dialog.dismiss(); openProtectedSearch() } } }
+        dialog.show()
     }
 
     private fun openAppControl() {
@@ -503,52 +511,29 @@ class MainActivity : Activity() {
     }
 
     private fun requestUninstall() {
-        val pinHash = prefs.getString("pin_hash", null) ?: run {
-            showMessage("הגדר קוד גישה לפני הסרה.")
-            return
-        }
-        val input = EditText(this).apply {
-            hint = "קוד גישה"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            imeOptions = EditorInfo.IME_ACTION_DONE
-            setSingleLine(true)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("הסרת האפליקציה")
-            .setMessage("הזן את קוד הגישה כדי להמשיך.")
-            .setView(input)
-            .setPositiveButton("המשך", null)
-            .setNegativeButton("ביטול", null)
-            .create().also { dialog ->
-                dialog.setOnShowListener {
-                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                        if (hash(input.text.toString()) != pinHash) {
-                            input.error = "קוד שגוי"
-                            return@setOnClickListener
-                        }
-                        dialog.dismiss()
-
-                        val component = ComponentName(this, BlockerDeviceAdminReceiver::class.java)
-                        val manager = getSystemService(DevicePolicyManager::class.java)
-                        if (manager.isAdminActive(component)) {
-                            AlertDialog.Builder(this)
-                                .setTitle("הגנת ההסרה פעילה")
-                                .setMessage("כדי להסיר את מגן התוכן, כבה קודם את 'הגנת ההסרה' בהגדרות המכשיר.")
-                                .setPositiveButton("פתח הגדרות") { _, _ ->
-                                    startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
-                                }
-                                .setNegativeButton("ביטול", null)
-                                .show()
-                            return@setOnShowListener
-                        }
-
-                        if (BlockerVpnService.isProtectionActive) {
-                            stopProtection()
-                        }
+        val pinHash = prefs.getString("pin_hash", null) ?: run { showMessage("הגדר קוד גישה לפני הסרה."); return }
+        val input = EditText(this).apply { hint = "קוד גישה"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD; imeOptions = EditorInfo.IME_ACTION_DONE; setSingleLine(true) }
+        val dialog = AlertDialog.Builder(this).setTitle("הסרת האפליקציה").setMessage("הזן את קוד הגישה כדי להמשיך.").setView(input).setPositiveButton("המשך", null).setNegativeButton("ביטול", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (hash(input.text.toString()) != pinHash) input.error = "קוד שגוי"
+                else {
+                    dialog.dismiss()
+                    val component = ComponentName(this, BlockerDeviceAdminReceiver::class.java)
+                    val manager = getSystemService(DevicePolicyManager::class.java)
+                    if (manager.isAdminActive(component)) {
+                        AlertDialog.Builder(this).setTitle("הגנת ההסרה פעילה")
+                            .setMessage("כדי להסיר את מגן התוכן, כבה קודם את 'הגנת ההסרה' בהגדרות המכשיר.")
+                            .setPositiveButton("פתח הגדרות") { _, _ -> startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) }
+                            .setNegativeButton("ביטול", null).show()
+                    } else {
+                        if (BlockerVpnService.isProtectionActive) stopProtection()
                         startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
                     }
                 }
-            }.show()
+            }
+        }
+        dialog.show()
     }
 
     private fun hideLauncherIcon() {
