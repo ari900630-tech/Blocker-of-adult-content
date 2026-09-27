@@ -176,7 +176,7 @@ class AppGateActivity : Activity() {
 
     private fun authenticateBiometric() {
         if (Build.VERSION.SDK_INT < 28) return
-        val executor = Executors.newSingleThreadExecutor()
+        val executor = mainExecutor
         val prompt = BiometricPrompt.Builder(this)
             .setTitle("מגן התוכן")
             .setSubtitle("אימות כדי לפתוח את האפליקציה")
