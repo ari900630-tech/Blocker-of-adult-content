@@ -210,7 +210,7 @@ class MainActivity : Activity() {
             if (BlockerVpnService.isProtectionActive) requestStopProtection()
             else requestVpnPermission()
         }
-        addButton("🔎 פתח חיפוש מוגן") { openProtectedSearch() }
+        addButton("🔎 פתח חיפוש מוגן") { requestProtectedSearch() }
         addButton("🔐  נעילת אפליקציות", Color.rgb(55, 78, 102)) { openAppControl() }
         addButton("✨  אפשרויות נוספות") { showSettings() }
     }
@@ -257,7 +257,7 @@ class MainActivity : Activity() {
         addButton("📱 ניהול אפליקציות מוגנות") { openAppControl() }
         addButton("🛡️ הפעל הגנת הסרה") { requestDeviceAdmin() }
         addButton("🗑️ הסרת האפליקציה", Color.rgb(183,28,28)) { requestUninstall() }
-        addButton("👁️ הצג את סמל האפליקציה") { showLauncherIcon() }
+        addButton("🙈 הסתר את סמל האפליקציה") { hideLauncherIcon() }\n        addButton("👁️ הצג את סמל האפליקציה") { showLauncherIcon() }
         addButton("↻ עדכון האפליקציה", Color.rgb(46,125,50)) { AppUpdater.downloadAndInstall(this) }
         addButton("⚙ פתח הגדרות VPN") { startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }
         addText("הערת Android: מחיקת 'נתוני האפליקציה' מאפס את האחסון הפרטי של האפליקציה. אפליקציה רגילה אינה יכולה למנוע זאת. לאחר אתחול רגיל ניתן להפעיל מחדש אוטומטית את ההגנה אם הרשאת VPN עדיין קיימת.")
