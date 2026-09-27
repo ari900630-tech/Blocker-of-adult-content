@@ -32,7 +32,7 @@ class AppControlActivity : Activity() {
         }
 
         root.addView(TextView(this).apply {
-            text = "📱  כל האפליקציות בטלפון"
+            text = "App Lock"
             textSize = 26f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
@@ -40,7 +40,7 @@ class AppControlActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
-            text = "כאן מופיעות האפליקציות המותקנות במכשיר. לחץ על אפליקציה כדי לנעול או לפתוח אותה. אפליקציה נעולה תבקש קוד גישה בעת הפתיחה."
+            text = "בחר אפליקציה כדי לנעול או לפתוח אותה. כל אפליקציה מופיעה פעם אחת בלבד."
             textSize = 15f
             setTextColor(Color.WHITE)
             setPadding(0, 0, 0, dp(12))
@@ -73,7 +73,7 @@ class AppControlActivity : Activity() {
         val apps = getLauncherApps()
 
         list.addView(TextView(this).apply {
-            text = "${apps.size} אפליקציות נמצאו — לחץ על שורה כדי לשנות נעילה"
+            text = "\${apps.size} אפליקציות"
             textSize = 15f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(16,42,67))
@@ -135,7 +135,8 @@ class AppControlActivity : Activity() {
         return try {
             packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL)
                 .filter { it.activityInfo?.packageName != packageName }
-                .distinctBy { it.activityInfo.packageName }
+                .groupBy { it.activityInfo.packageName }
+                .mapNotNull { (_, entries) -> entries.firstOrNull() }
                 .sortedBy { runCatching { it.activityInfo.loadLabel(packageManager).toString() }.getOrDefault(it.activityInfo.packageName) }
         } catch (_: Exception) { emptyList() }
     }
