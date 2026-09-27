@@ -46,7 +46,7 @@ class MainActivity : Activity() {
     private fun buildShell() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(244, 247, 251))
+            background = purpleGradient()
             layoutDirection = LinearLayout.LAYOUT_DIRECTION_RTL
         }
 
@@ -63,7 +63,7 @@ class MainActivity : Activity() {
             text = "מגן התוכן\nשקט. שליטה. הגנה."
             textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(16, 42, 67))
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER_VERTICAL
         }, LinearLayout.LayoutParams(0, dp(60), 1f))
         root.addView(top)
@@ -82,7 +82,7 @@ class MainActivity : Activity() {
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(8), dp(8), dp(8), dp(8))
-            background = rounded(Color.WHITE, 22)
+            background = rounded(Color.argb(235, 255, 255, 255), 22)
         }
         val navItems = listOf(
             Triple("⌂", "ראשי", 0),
@@ -95,9 +95,9 @@ class MainActivity : Activity() {
                 text = symbol
                 textSize = 28f
                 gravity = Gravity.CENTER
-                setTextColor(Color.rgb(35, 58, 80))
+                setTextColor(Color.rgb(58, 37, 104))
                 contentDescription = label
-                background = rounded(if (index == 0) Color.rgb(220, 235, 248) else Color.WHITE, 18)
+                background = rounded(if (index == 0) Color.rgb(88, 231, 226) else Color.argb(245, 255, 255, 255), 18)
                 setOnClickListener {
                     if (!unlocked && prefs.getString("pin_hash", null) != null) {
                         showLockScreen()
@@ -123,7 +123,7 @@ class MainActivity : Activity() {
     private fun refreshNavSelection() {
         navButtons.forEachIndexed { index, button ->
             button.isSelected = index == selectedNav
-            button.background = rounded(if (index == selectedNav) Color.rgb(220, 235, 248) else Color.WHITE, 18)
+            button.background = rounded(if (index == selectedNav) Color.rgb(88, 231, 226) else Color.argb(245, 255, 255, 255), 18)
         }
     }
 
@@ -209,7 +209,7 @@ class MainActivity : Activity() {
             setTextColor(if (active) Color.rgb(46,125,50) else Color.rgb(183,28,28))
             gravity = Gravity.CENTER
             setPadding(dp(16), dp(18), dp(16), dp(18))
-            background = rounded(Color.WHITE, 20)
+            background = rounded(Color.argb(235, 255, 255, 255), 20)
         }
         content.addView(status, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(14) })
 
@@ -226,13 +226,13 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(8), dp(12), dp(8))
-            background = rounded(if (active) Color.rgb(232,244,236) else Color.WHITE, 20)
+            background = rounded(if (active) Color.argb(245, 255, 255, 255) else Color.argb(225, 255, 255, 255), 20)
         }
         row.addView(TextView(this).apply {
             text = if (active) "●  ההגנה פעילה" else "○  ההגנה כבויה"
             textSize = 18f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(if (active) Color.rgb(27,94,32) else Color.rgb(80,100,120))
+            setTextColor(Color.rgb(58, 37, 104))
             gravity = Gravity.CENTER_VERTICAL
         }, LinearLayout.LayoutParams(0, dp(62), 1f))
         row.addView(android.widget.Switch(this).apply {
@@ -374,7 +374,7 @@ class MainActivity : Activity() {
             this.text = text
             textSize = 27f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(16,42,67))
+            setTextColor(Color.WHITE)
             setPadding(0, dp(8), 0, dp(12))
         })
     }
@@ -383,7 +383,7 @@ class MainActivity : Activity() {
         content.addView(TextView(this).apply {
             this.text = text
             textSize = 15f
-            setTextColor(Color.rgb(80,100,120))
+            setTextColor(Color.WHITE)
             setPadding(0, 0, 0, dp(14))
         })
     }
@@ -599,6 +599,11 @@ class MainActivity : Activity() {
         setColor(color)
         cornerRadius = dp(radius).toFloat()
     }
+
+    private fun purpleGradient() = GradientDrawable(
+        GradientDrawable.Orientation.TL_BR,
+        intArrayOf(Color.rgb(151, 133, 247), Color.rgb(91, 42, 190), Color.rgb(48, 10, 120))
+    )
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
