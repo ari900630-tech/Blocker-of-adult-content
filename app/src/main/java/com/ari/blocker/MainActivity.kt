@@ -32,6 +32,8 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private val prefs by lazy { getSharedPreferences("settings", MODE_PRIVATE) }
     private var unlocked = false
+    private val navButtons = mutableListOf<TextView>()
+    private var selectedNav = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +91,7 @@ class MainActivity : Activity() {
         )
         navItems.forEach { (symbol, label, index) ->
             nav.addView(TextView(this).apply {
+                navButtons.add(this)
                 text = symbol
                 textSize = 28f
                 gravity = Gravity.CENTER
@@ -100,6 +103,8 @@ class MainActivity : Activity() {
                         showLockScreen()
                         return@setOnClickListener
                     }
+                    selectedNav = index
+                    refreshNavSelection()
                     when (index) {
                         0 -> showHome()
                         1 -> showBlocks()
@@ -112,6 +117,14 @@ class MainActivity : Activity() {
         }
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(70)))
         setContentView(root)
+        refreshNavSelection()
+    }
+
+    private fun refreshNavSelection() {
+        navButtons.forEachIndexed { index, button ->
+            button.isSelected = index == selectedNav
+            button.background = rounded(if (index == selectedNav) Color.rgb(220, 235, 248) else Color.WHITE, 18)
+        }
     }
 
     private fun showSetup() {
