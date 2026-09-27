@@ -48,12 +48,12 @@ class AppGateActivity : Activity() {
             text="הדפדפן נעול"; textSize=25f; setTextColor(Color.rgb(16,42,67)); gravity=Gravity.CENTER
         })
         root.addView(TextView(this).apply {
-            text="אפשר להשתמש בדפדפן רק דרך חיפוש מוגן בתוך מגן התוכן."
+            text="אפשר להשתמש בדפדפן רק דרך חיפוש מוגן בתוך מגן +."
             textSize=16f; setTextColor(Color.rgb(80,100,120)); gravity=Gravity.CENTER
             setPadding(0,dp(10),0,dp(18))
         })
         root.addView(Button(this).apply {
-            text="חזרה למגן התוכן"; isAllCaps=false
+            text="חזרה למגן +"; isAllCaps=false
             setOnClickListener {
                 packageManager.getLaunchIntentForPackage(packageName)?.let {
                     it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -142,7 +142,7 @@ class AppGateActivity : Activity() {
         if(Build.VERSION.SDK_INT<28) return
         val executor=mainExecutor
         val prompt=BiometricPrompt.Builder(this)
-            .setTitle("מגן התוכן").setSubtitle("אימות כדי לפתוח את האפליקציה")
+            .setTitle("מגן +").setSubtitle("אימות כדי לפתוח את האפליקציה")
             .setDescription("אימות ביומטרי מאפשר כניסה לאפליקציה המוגנת.")
             .setNegativeButton("שימוש בקוד",executor){_,_->}.build()
         val cancel=CancellationSignal()
