@@ -3,17 +3,29 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:fillColor="#7D60E2" android:pathData="M54,6 L93,20 L93,49 C93,74 77,92 54,102 C31,92 15,74 15,49 L15,20 Z"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M54,20 L79,29 L79,48 C79,64 69,78 54,87 C39,78 29,64 29,48 L29,29 Z"/>
 
-    <!-- 18 -->
-    <path
-        android:fillColor="#7D60E2"
-        android:pathData="M40,39 L44,36 L48,36 L48,52 L44,52 L44,41 L40,44 Z"/>
-    <path
-        android:fillColor="#7D60E2"
-        android:pathData="M54,36 L62,36 C65,36 67,38 67,41 L67,47 C67,50 65,52 62,52 L54,52 C51,52 49,50 49,47 L49,41 C49,38 51,36 54,36 Z M54,40 C53.5,40 53,40.5 53,41 L53,47 C53,47.5 53.5,48 54,48 L62,48 C62.5,48 63,47.5 63,47 L63,41 C63,40.5 62.5,40 62,40 Z"/>
+    <!-- Shield: clear visual meaning of protection/blocking -->
+    <path android:fillColor="#7D60E2"
+        android:pathData="M54,5 L94,19 L94,48 C94,74 77,93 54,103 C31,93 14,74 14,48 L14,19 Z"/>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M54,18 L80,27 L80,47 C80,64 70,78 54,88 C38,78 28,64 28,47 L28,27 Z"/>
+
+    <!-- 18+ : unmistakable age/content-protection symbol -->
+    <!-- 1 -->
+    <path android:fillColor="#7D60E2"
+        android:pathData="M37,35 L43,31 L47,31 L47,53 L42,53 L42,38 L37,41 Z"/>
+
+    <!-- 8, built from clear seven-segment-style strokes -->
+    <path android:fillColor="#7D60E2"
+        android:pathData="M52,31 L64,31 L67,34 L67,41 L64,44 L67,47 L67,50 L64,53 L52,53 L49,50 L49,47 L52,44 L49,41 L49,34 Z
+        M54,35 L54,40 L62,40 L62,35 Z
+        M54,44 L54,49 L62,49 L62,44 Z"/>
 
     <!-- plus -->
-    <path android:fillColor="#7D60E2" android:pathData="M52,58 L56,58 L56,63 L61,63 L61,67 L56,67 L56,72 L52,72 L52,67 L47,67 L47,63 L52,63 Z"/>
+    <path android:fillColor="#7D60E2"
+        android:pathData="M48,58 L53,58 L53,63 L58,63 L58,68 L53,68 L53,73 L48,73 L48,68 L43,68 L43,63 L48,63 Z"/>
+    <!-- small lock, reinforcing that the app protects/blocks content -->
+    <path android:fillColor="#7D60E2"
+        android:pathData="M63,62 L63,59 C63,56 65,54 68,54 C71,54 73,56 73,59 L73,62 L76,62 L76,74 L60,74 L60,62 Z
+        M66,62 L70,62 L70,59 C70,58 69,57 68,57 C67,57 66,58 66,59 Z"/>
 </vector>
