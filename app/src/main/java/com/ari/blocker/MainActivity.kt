@@ -147,7 +147,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(22), dp(22), dp(22), dp(20))
-            background = rounded(Color.rgb(151, 133, 247), 30)
+            background = rounded(Color.rgb(8, 67, 151), 30)
         }
         card.addView(TextView(this).apply { text="🛡️🔒"; textSize=46f; gravity=Gravity.CENTER },
             LinearLayout.LayoutParams(-1, dp(62)))
@@ -434,15 +434,18 @@ class MainActivity : Activity() {
                 text=label;textSize=16f;typeface=Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(63,45,115));gravity=Gravity.CENTER_VERTICAL
             },LinearLayout.LayoutParams(0,dp(62),1f))
-            row.addView(android.widget.Switch(this).apply{
+            val appSwitch = android.widget.Switch(this).apply{
                 isChecked=locked;scaleX=1.08f;scaleY=1.08f
+                contentDescription = "נעילת $label"
                 setOnCheckedChangeListener { _,checked ->
                     val s=getSharedPreferences("app_control",MODE_PRIVATE).getStringSet("blocked_apps",emptySet())?.toMutableSet() ?: mutableSetOf()
                     if(checked)s.add(pkg) else s.remove(pkg)
                     getSharedPreferences("app_control",MODE_PRIVATE).edit().putStringSet("blocked_apps",s).apply()
                     row.background=rounded(if(checked)Color.rgb(226,255,245) else Color.argb(245,255,255,255),20)
                 }
-            },LinearLayout.LayoutParams(dp(62),dp(58)))
+            }
+            row.addView(appSwitch,LinearLayout.LayoutParams(dp(62),dp(58)))
+            row.setOnClickListener { appSwitch.performClick() }
             list.addView(row,LinearLayout.LayoutParams(-1,dp(72)).apply{bottomMargin=dp(8)})
         }
         val scroll=ScrollView(this).apply{addView(list)}
@@ -550,6 +553,7 @@ class MainActivity : Activity() {
         })
         content.addView(cards)
         addDeviceManagementControls()
+        addButton("🔐 בחירת הסיסמה", Color.rgb(88, 231, 226)) { setPin() }
     }
 
     private fun settingsSection(icon:String,title:String,subtitle:String,action:()->Unit):LinearLayout{
