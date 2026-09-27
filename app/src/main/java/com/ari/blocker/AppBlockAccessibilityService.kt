@@ -6,6 +6,8 @@ import android.view.accessibility.AccessibilityEvent
 
 class AppBlockAccessibilityService : AccessibilityService() {
     private var unlockedPackage: String? = null
+    private var temporaryAllowedPackage: String? = null
+    private var temporaryAllowedUntil = 0L
     private var gateLaunchAt = 0L
 
     override fun onServiceConnected() {
@@ -22,12 +24,20 @@ class AppBlockAccessibilityService : AccessibilityService() {
         val pkg = event?.packageName?.toString() ?: return
         if (pkg == packageName) return
 
-        val blocked = getSharedPreferences("app_control", MODE_PRIVATE)
+        val isProtectedBrowser = PROTECTED_BROWSER_PACKAGES.contains(pkg)
+        val blockedByUser = getSharedPreferences("app_control", MODE_PRIVATE)
             .getStringSet("blocked_apps", emptySet())
             ?.contains(pkg) == true
 
-        if (!blocked) {
+        if (!isProtectedBrowser && !blockedByUser) {
             unlockedPackage = null
+            return
+        }
+
+        if (temporaryAllowedPackage == pkg && System.currentTimeMillis() < temporaryAllowedUntil) {
+            unlockedPackage = pkg
+            temporaryAllowedPackage = null
+            temporaryAllowedUntil = 0L
             return
         }
 
@@ -47,7 +57,34 @@ class AppBlockAccessibilityService : AccessibilityService() {
 
     fun allowCurrentPackage(pkg: String) {
         unlockedPackage = pkg
+        temporaryAllowedPackage = null
+        temporaryAllowedUntil = 0L
+    }
+
+    fun allowPackageFromProtectedApp(pkg: String, durationMs: Long = 30_000L) {
+        temporaryAllowedPackage = pkg
+        temporaryAllowedUntil = System.currentTimeMillis() + durationMs
+        unlockedPackage = pkg
     }
 
     override fun onInterrupt() {}
+
+    companion object {
+        val PROTECTED_BROWSER_PACKAGES = setOf(
+            "com.android.chrome",
+            "org.chromium.chrome",
+            "org.mozilla.firefox",
+            "com.microsoft.emmx",
+            "com.brave.browser",
+            "com.opera.browser",
+            "com.sec.android.app.sbrowser",
+            "com.duckduckgo.mobile.android",
+            "com.vivaldi.browser",
+            "com.kiwibrowser.browser"
+        )
+    }
+}
+
+object AppBlockAccessibilityServiceHolder {
+    @Volatile var service: AppBlockAccessibilityService? = null
 }
