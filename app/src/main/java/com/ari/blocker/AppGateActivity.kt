@@ -69,30 +69,31 @@ class AppGateActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER
             setPadding(dp(24),dp(20),dp(24),dp(20))
-            setBackgroundColor(Color.rgb(151,133,247))
+            setBackgroundColor(Color.rgb(8,67,151))
             layoutDirection=LinearLayout.LAYOUT_DIRECTION_RTL
         }
-        root.addView(TextView(this).apply{text="🛡️🔒";textSize=48f;gravity=Gravity.CENTER},LinearLayout.LayoutParams(-1,dp(66)))
+        root.addView(TextView(this).apply{text="🛡️🔒";textSize=50f;gravity=Gravity.CENTER},LinearLayout.LayoutParams(-1,dp(72)))
         root.addView(TextView(this).apply{
-            text="האפליקציה נעולה";textSize=24f;setTextColor(Color.WHITE);gravity=Gravity.CENTER
+            text="מסך נעילה";textSize=24f;setTextColor(Color.WHITE);gravity=Gravity.CENTER
         },LinearLayout.LayoutParams(-1,dp(40)))
         root.addView(TextView(this).apply{
-            text="הזן קוד כדי להמשיך";textSize=15f;setTextColor(Color.rgb(241,238,255));gravity=Gravity.CENTER
+            text="הזן את סיסמת הפתיחה";textSize=15f;setTextColor(Color.rgb(241,238,255));gravity=Gravity.CENTER
         },LinearLayout.LayoutParams(-1,dp(34)))
-        if(prefs.getString("auth_mode","PIN4")=="PIN4") {
+        val mode = prefs.getString("auth_mode","PIN4")
+        if(mode=="PIN4") {
             val input=EditText(this).apply{
                 codeInput=this;inputType=InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-                textSize=23f;gravity=Gravity.CENTER;setSingleLine(true)
+                textSize=25f;gravity=Gravity.CENTER;setSingleLine(true)
                 setTextColor(Color.WHITE);setHintTextColor(Color.WHITE);hint="—  —  —  —"
                 setBackgroundColor(Color.TRANSPARENT)
             }
-            root.addView(input,LinearLayout.LayoutParams(-1,dp(48)))
+            root.addView(input,LinearLayout.LayoutParams(-1,dp(50)))
             arrayOf(arrayOf("1","2","3"),arrayOf("4","5","6"),arrayOf("7","8","9"),arrayOf("","0","⌫")).forEach{ values->
                 val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER}
                 values.forEach{key->
                     row.addView(TextView(this).apply{
                         text=key;textSize=24f;setTextColor(Color.WHITE);gravity=Gravity.CENTER
-                        background=android.graphics.drawable.GradientDrawable().apply{setColor(if(key.isEmpty())Color.TRANSPARENT else Color.argb(45,255,255,255));cornerRadius=dp(22).toFloat()}
+                        background=android.graphics.drawable.GradientDrawable().apply{setColor(if(key.isEmpty())Color.TRANSPARENT else Color.argb(38,255,255,255));cornerRadius=dp(26).toFloat()}
                         setOnClickListener{
                             when(key){
                                 "⌫"->if(input.text.isNotEmpty())input.text.delete(input.text.length-1,input.text.length)
@@ -100,10 +101,33 @@ class AppGateActivity : Activity() {
                                 else->if(input.text.length<4){input.append(key);if(input.text.length==4)verifyCode()}
                             }
                         }
-                    },LinearLayout.LayoutParams(dp(62),dp(52)).apply{leftMargin=dp(5);rightMargin=dp(5);topMargin=dp(4);bottomMargin=dp(4)})
+                    },LinearLayout.LayoutParams(dp(64),dp(56)).apply{leftMargin=dp(5);rightMargin=dp(5);topMargin=dp(4);bottomMargin=dp(4)})
                 }
                 root.addView(row)
             }
+        } else if (mode=="PATTERN") {
+            root.addView(TextView(this).apply{
+                text="צייר את סיסמת ההחלקה"
+                textSize=15f
+                setTextColor(Color.WHITE)
+                gravity=Gravity.CENTER
+            },LinearLayout.LayoutParams(-1,dp(34)))
+            val pattern=PatternLockView(this)
+            pattern.onPatternComplete={value->
+                if(hash("PATTERN:"+value.joinToString(","))==prefs.getString("pin_hash",null)){
+                    allowAndClose()
+                } else {
+                    pattern.clearPattern()
+                    val message=TextView(this).apply{
+                        text="סיסמה שגויה — נסה שוב"
+                        textSize=14f
+                        setTextColor(Color.WHITE)
+                        gravity=Gravity.CENTER
+                    }
+                    root.addView(message,LinearLayout.LayoutParams(-1,dp(32)))
+                }
+            }
+            root.addView(pattern,LinearLayout.LayoutParams(-1,dp(250)))
         } else {
             addCodeInput(root)
         }
