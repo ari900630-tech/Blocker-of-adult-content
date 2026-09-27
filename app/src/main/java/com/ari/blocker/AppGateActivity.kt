@@ -68,33 +68,47 @@ class AppGateActivity : Activity() {
     private fun showGate() {
         val root = LinearLayout(this).apply {
             orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER
-            setPadding(dp(28),dp(28),dp(28),dp(28))
-            setBackgroundColor(Color.rgb(246,248,252))
+            setPadding(dp(24),dp(20),dp(24),dp(20))
+            setBackgroundColor(Color.rgb(151,133,247))
             layoutDirection=LinearLayout.LAYOUT_DIRECTION_RTL
         }
-        root.addView(TextView(this).apply { text="🛡️"; textSize=54f; gravity=Gravity.CENTER })
-        root.addView(TextView(this).apply {
-            text="האפליקציה מוגנת"; textSize=25f; setTextColor(Color.rgb(16,42,67)); gravity=Gravity.CENTER
-        })
-        root.addView(TextView(this).apply {
-            text="כדי להיכנס לאפליקציה הזו צריך לאשר גישה."
-            textSize=16f; setTextColor(Color.rgb(80,100,120)); gravity=Gravity.CENTER
-            setPadding(0,dp(8),0,dp(18))
-        })
-        val mode=prefs.getString("auth_mode","PIN4")
-        if (mode=="BIOMETRIC" && Build.VERSION.SDK_INT>=28) {
-            root.addView(Button(this).apply {
-                text="אימות בטביעת אצבע / ביומטריה"; isAllCaps=false
-                setOnClickListener { authenticateBiometric() }
-            }, LinearLayout.LayoutParams(-1,dp(56)).apply { bottomMargin=dp(12) })
-            root.addView(TextView(this).apply {
-                text="אם הביומטריה לא זמינה, אפשר להשתמש בקוד הגיבוי."
-                textSize=13f; gravity=Gravity.CENTER
-            })
+        root.addView(TextView(this).apply{text="🛡️🔒";textSize=48f;gravity=Gravity.CENTER},LinearLayout.LayoutParams(-1,dp(66)))
+        root.addView(TextView(this).apply{
+            text="האפליקציה נעולה";textSize=24f;setTextColor(Color.WHITE);gravity=Gravity.CENTER
+        },LinearLayout.LayoutParams(-1,dp(40)))
+        root.addView(TextView(this).apply{
+            text="הזן קוד כדי להמשיך";textSize=15f;setTextColor(Color.rgb(241,238,255));gravity=Gravity.CENTER
+        },LinearLayout.LayoutParams(-1,dp(34)))
+        if(prefs.getString("auth_mode","PIN4")=="PIN4") {
+            val input=EditText(this).apply{
+                codeInput=this;inputType=InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+                textSize=23f;gravity=Gravity.CENTER;setSingleLine(true)
+                setTextColor(Color.WHITE);setHintTextColor(Color.WHITE);hint="—  —  —  —"
+                setBackgroundColor(Color.TRANSPARENT)
+            }
+            root.addView(input,LinearLayout.LayoutParams(-1,dp(48)))
+            arrayOf(arrayOf("1","2","3"),arrayOf("4","5","6"),arrayOf("7","8","9"),arrayOf("","0","⌫")).forEach{ values->
+                val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER}
+                values.forEach{key->
+                    row.addView(TextView(this).apply{
+                        text=key;textSize=24f;setTextColor(Color.WHITE);gravity=Gravity.CENTER
+                        background=android.graphics.drawable.GradientDrawable().apply{setColor(if(key.isEmpty())Color.TRANSPARENT else Color.argb(45,255,255,255));cornerRadius=dp(22).toFloat()}
+                        setOnClickListener{
+                            when(key){
+                                "⌫"->if(input.text.isNotEmpty())input.text.delete(input.text.length-1,input.text.length)
+                                ""->{}
+                                else->if(input.text.length<4){input.append(key);if(input.text.length==4)verifyCode()}
+                            }
+                        }
+                    },LinearLayout.LayoutParams(dp(62),dp(52)).apply{leftMargin=dp(5);rightMargin=dp(5);topMargin=dp(4);bottomMargin=dp(4)})
+                }
+                root.addView(row)
+            }
+        } else {
+            addCodeInput(root)
         }
-        addCodeInput(root)
         setContentView(root)
-        codeInput.requestFocus()
+        if(::codeInput.isInitialized) codeInput.requestFocus()
     }
 
     private fun addCodeInput(root: LinearLayout) {
