@@ -39,6 +39,11 @@ class BlockerVpnService : VpnService() {
         fun reloadCustomBlocks() {
             instance?.loadCustomBlocks()
         }
+
+        fun forceStop() {
+            instance?.stopProtectionNow()
+            isProtectionActive = false
+        }
     }
 
     @Volatile private var running = false
@@ -404,6 +409,15 @@ class BlockerVpnService : VpnService() {
         if (i < end) sum += (data[i].toInt() and 0xFF) shl 8
         while ((sum ushr 16) != 0L) sum = (sum and 0xFFFF) + (sum ushr 16)
         return sum.inv().toInt() and 0xFFFF
+    }
+
+    private fun stopProtectionNow() {
+        running = false
+        isProtectionActive = false
+        vpn?.close()
+        vpn = null
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     override fun onRevoke() {
