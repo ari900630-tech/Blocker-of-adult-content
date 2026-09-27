@@ -9,6 +9,7 @@ import android.os.Build
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != Intent.ACTION_BOOT_COMPLETED) return
+        BlockerDeviceAdminReceiver.enforceUninstallBlocked(context)
         val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("protection_enabled", false)) return
         if (VpnService.prepare(context) != null) return
