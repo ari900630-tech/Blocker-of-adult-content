@@ -19,6 +19,10 @@ class PatternLockView(context: Context) : View(context) {
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val tempPath = Path()
 
+    // Tunable to match the reference pattern-lock screen.
+    var gapRatio = 0.30f
+    var dotRadiusRatio = 0.055f
+
     init {
         isClickable = true
         circlePaint.style = Paint.Style.FILL
@@ -39,8 +43,8 @@ class PatternLockView(context: Context) : View(context) {
         val size = minOf(w, h)
         val cx = w / 2f
         val cy = h / 2f
-        val gap = size * 0.30f
-        val r = size * 0.055f
+        val gap = size * gapRatio
+        val r = size * dotRadiusRatio
 
         var index = 0
         for (row in 0..2) {
