@@ -203,6 +203,3 @@ class AppGateActivity : Activity() {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 }
 
-object AppBlockAccessibilityServiceHolder {
-    @Volatile var service: AppBlockAccessibilityService? = null
-}
