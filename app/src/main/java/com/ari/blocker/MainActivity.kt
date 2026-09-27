@@ -224,6 +224,7 @@ class MainActivity : Activity() {
             else requestVpnPermission()
         }
         addButton("🔐  נעילת אפליקציות", Color.rgb(55, 78, 102)) { openAppControl() }
+        addButton("🌐  פתח חיפוש בכרום", Color.rgb(21, 101, 192)) { requestProtectedSearch() }
         addButton("✨  אפשרויות נוספות") { showSettings() }
     }
 
