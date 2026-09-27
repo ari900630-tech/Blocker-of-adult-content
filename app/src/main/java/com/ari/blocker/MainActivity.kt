@@ -314,15 +314,6 @@ class MainActivity : Activity() {
             bottomMargin = dp(12)
         })
 
-        val quick = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-        quick.addView(homeQuickCard("📱", "האפליקציות שלי") { showAppControl() },
-            LinearLayout.LayoutParams(0, dp(78), 1f).apply { rightMargin = dp(6) })
-        quick.addView(homeQuickCard("⚙️", "הגדרות") { showSettings() },
-            LinearLayout.LayoutParams(0, dp(78), 1f).apply { leftMargin = dp(6) })
-        content.addView(quick, LinearLayout.LayoutParams(-1, dp(78)))
     }
 
     private fun addCuteProtectionSwitch(active: Boolean): LinearLayout {
