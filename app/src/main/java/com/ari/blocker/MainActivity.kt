@@ -218,7 +218,7 @@ class MainActivity : Activity() {
         val resolver = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
         val browserPackage = resolver.firstOrNull()?.activityInfo?.packageName
         if (browserPackage != null) {
-            AppBlockAccessibilityServiceHolder.service?.allowPackageFromProtectedApp(browserPackage)
+            AppBlockAccessibilityServiceHolder.service?.allowPackageFromProtectedApp(browserPackage, 5 * 60_000L)
         }
         startActivity(intent)
     }
