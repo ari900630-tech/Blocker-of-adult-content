@@ -3,8 +3,6 @@ package com.ari.blocker
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -242,12 +240,15 @@ class MainActivity : Activity() {
     }
 
     private fun openProtectedSearch() {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?safe=active"))
-        val resolver = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
-        val browserPackage = resolver.firstOrNull()?.activityInfo?.packageName
-        if (browserPackage != null) {
-            AppBlockAccessibilityServiceHolder.service?.allowPackageFromProtectedApp(browserPackage, 5 * 60_000L)
+        val chromePackage = "com.android.chrome"
+        if (packageManager.getLaunchIntentForPackage(chromePackage) == null) {
+            showMessage("Chrome לא מותקן במכשיר.")
+            return
         }
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?safe=active")).apply {
+            setPackage(chromePackage)
+        }
+        AppBlockAccessibilityServiceHolder.service?.allowPackageFromProtectedApp(chromePackage, 5 * 60_000L)
         startActivity(intent)
     }
 
@@ -305,7 +306,6 @@ class MainActivity : Activity() {
         addText("הגדרות אבטחה, קוד, בקרת אפליקציות ועדכונים.")
         addButton("🔐 סוג קוד / טביעת אצבע", Color.rgb(21,101,192)) { setPin() }
         addButton("📱 ניהול אפליקציות מוגנות") { openAppControl() }
-        addButton("🛡️ הפעל הגנת הסרה") { requestDeviceAdmin() }
         addButton("🗑️ הסרת האפליקציה", Color.rgb(183,28,28)) { requestUninstall() }
         addButton("🙈 הסתר את סמל האפליקציה") { hideLauncherIcon() }
         addButton("👁️ הצג את סמל האפליקציה") { showLauncherIcon() }
@@ -434,26 +434,12 @@ class MainActivity : Activity() {
             }.show()
     }
 
-    private fun requestDeviceAdmin() {
-        val component = ComponentName(this, BlockerDeviceAdminReceiver::class.java)
-        val manager = getSystemService(DevicePolicyManager::class.java)
-        if (manager.isAdminActive(component)) {
-            showMessage("הגנת ההסרה כבר פעילה.")
-            return
-        }
-        startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, component)
-            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "הפעלת הגנת ההסרה של מגן התוכן.")
-        })
-    }
-
     private fun setPin() {
         val modes = arrayOf("4 ספרות", "קוד באורך חופשי", "טביעת אצבע / ביומטריה")
         val keys = arrayOf("PIN4", "PASSWORD", "BIOMETRIC")
-        val current = keys.indexOf(prefs.getString("auth_mode", "PIN4")).coerceAtLeast(0)
         AlertDialog.Builder(this)
             .setTitle("בחר דרך כניסה")
-            .setSingleChoiceItems(modes, current) { dialog, which ->
+            .setSingleChoiceItems(modes, -1) { dialog, which ->
                 dialog.dismiss()
                 askForNewCode(keys[which])
             }
@@ -521,17 +507,8 @@ class MainActivity : Activity() {
                 if (hash(input.text.toString()) != pinHash) input.error = "קוד שגוי"
                 else {
                     dialog.dismiss()
-                    val component = ComponentName(this, BlockerDeviceAdminReceiver::class.java)
-                    val manager = getSystemService(DevicePolicyManager::class.java)
-                    if (manager.isAdminActive(component)) {
-                        AlertDialog.Builder(this).setTitle("הגנת ההסרה פעילה")
-                            .setMessage("כדי להסיר את מגן התוכן, כבה קודם את 'הגנת ההסרה' בהגדרות המכשיר.")
-                            .setPositiveButton("פתח הגדרות") { _, _ -> startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) }
-                            .setNegativeButton("ביטול", null).show()
-                    } else {
-                        if (BlockerVpnService.isProtectionActive) stopProtection()
-                        startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
-                    }
+                    if (BlockerVpnService.isProtectionActive) stopProtection()
+                    startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
                 }
             }
         }
