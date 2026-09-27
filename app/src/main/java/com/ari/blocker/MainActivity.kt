@@ -252,57 +252,6 @@ class MainActivity : Activity() {
         startActivity(Intent(this, AppControlActivity::class.java))
     }
 
-    private fun showAppControl() {
-        selectedNav = 1
-        refreshNavSelection()
-        content.removeAllViews()
-        addCardTitle("App Lock")
-        addText("בחר אפליקציות לנעילה")
-
-        if (!isAccessibilityEnabled()) {
-            addButton("▶ הפעל בקרת אפליקציות", Color.rgb(88, 231, 226)) { openAccessibilitySettings() }
-        }
-
-        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        getLauncherApps().forEach { app ->
-            val pkg = app.activityInfo.packageName
-            if (pkg == packageName) return@forEach
-            val label = runCatching { app.activityInfo.loadLabel(packageManager).toString() }.getOrDefault(pkg)
-            val icon = runCatching { app.activityInfo.loadIcon(packageManager) }.getOrNull()
-            val locked = prefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(10), dp(4), dp(8), dp(4))
-                background = rounded(Color.argb(245, 255, 255, 255), 18)
-            }
-            if (icon != null) row.addView(android.widget.ImageView(this).apply {
-                setImageDrawable(icon)
-                scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
-            }, LinearLayout.LayoutParams(dp(44), dp(44)).apply { leftMargin = dp(6); rightMargin = dp(8) })
-            row.addView(TextView(this).apply {
-                text = label
-                textSize = 15f
-                typeface = if (locked) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-                setTextColor(Color.rgb(58, 37, 104))
-                gravity = Gravity.CENTER_VERTICAL
-            }, LinearLayout.LayoutParams(0, dp(50), 1f))
-            row.addView(android.widget.Switch(this).apply {
-                isChecked = locked
-                text = ""
-                contentDescription = "נעילת $label"
-                setOnCheckedChangeListener { _, checked ->
-                    val current = prefs.getStringSet("blocked_apps", emptySet())?.toMutableSet() ?: mutableSetOf()
-                    if (checked) current.add(pkg) else current.remove(pkg)
-                    prefs.edit().putStringSet("blocked_apps", current).apply()
-                }
-            }, LinearLayout.LayoutParams(dp(56), dp(50)))
-            list.addView(row, LinearLayout.LayoutParams(-1, dp(62)).apply { bottomMargin = dp(7) })
-        }
-        val scroll = ScrollView(this).apply { addView(list) }
-        content.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-    }
-
     private fun getLauncherApps(): List<android.content.pm.ResolveInfo> {
         val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
         return try {
