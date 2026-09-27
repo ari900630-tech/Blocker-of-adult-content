@@ -857,102 +857,223 @@ class MainActivity : Activity() {
     }
 
     private fun askForNewCode(mode: String) {
+        content.removeAllViews()
+        content.setPadding(dp(10), dp(8), dp(10), dp(12))
+
         val oldHash = prefs.getString("pin_hash", null)
-        val box = LinearLayout(this).apply {
+
+        val screenColor = when (mode) {
+            "PIN4" -> Color.rgb(8, 67, 151)
+            "PATTERN" -> Color.rgb(5, 34, 48)
+            else -> Color.rgb(105, 76, 220)
+        }
+
+        val screen = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(22), 0, dp(22), 0)
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(22), dp(22), dp(22), dp(20))
+            background = rounded(screenColor, 30)
         }
-        val oldInput = EditText(this).apply {
-            hint = if (oldHash == null) "אין סיסמה קודמת" else "סיסמה נוכחית"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            setSingleLine(true)
-        }
-        if (oldHash != null) box.addView(oldInput, LinearLayout.LayoutParams(-1, dp(56)))
 
-        if (mode == "PATTERN") {
-            box.addView(TextView(this).apply {
-                text = "צייר סיסמה חדשה על 9 העיגולים"
-                textSize = 15f
-                setTextColor(Color.rgb(72,50,130))
+        screen.addView(TextView(this).apply {
+            text = when (mode) {
+                "PATTERN" -> "▦"
+                else -> "🛡️🔒"
+            }
+            textSize = if (mode == "PATTERN") 42f else 48f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(68)))
+
+        screen.addView(TextView(this).apply {
+            text = when (mode) {
+                "PIN4" -> "Type an unlock password"
+                "PATTERN" -> "Screen Lock"
+                else -> "בחר סיסמת פתיחה"
+            }
+            textSize = 22f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(42)))
+
+        if (oldHash != null) {
+            val current = EditText(this).apply {
+                hint = "הסיסמה הנוכחית"
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                setSingleLine(true)
+                setTextColor(Color.WHITE)
+                setHintTextColor(Color.argb(190,255,255,255))
                 gravity = Gravity.CENTER
-                setPadding(0, dp(8), 0, dp(4))
-            }, LinearLayout.LayoutParams(-1, dp(42)))
-            val pattern = PatternLockView(this)
-            box.addView(pattern, LinearLayout.LayoutParams(-1, dp(250)))
-            var chosen: List<Int>? = null
-            pattern.onPatternComplete = { value ->
-                chosen = value
             }
-
-            AlertDialog.Builder(this)
-                .setTitle("בחירת סיסמת פס החלקה")
-                .setView(box)
-                .setPositiveButton("שמירה", null)
-                .setNegativeButton("ביטול", null)
-                .create().also { dialog ->
-                    dialog.setOnShowListener {
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                            if (oldHash != null && hash(oldInput.text.toString()) != oldHash) {
-                                oldInput.error = "סיסמה נוכחית שגויה"
-                                return@setOnClickListener
-                            }
-                            val patternValue = chosen
-                            if (patternValue == null || patternValue.size < 4) {
-                                showMessage("יש לצייר לפחות 4 עיגולים.")
-                                return@setOnClickListener
-                            }
-                            prefs.edit()
-                                .putString("pin_hash", hash("PATTERN:" + patternValue.joinToString(",")))
-                                .putString("auth_mode", "PATTERN")
-                                .apply()
-                            unlocked = true
-                            dialog.dismiss()
-                            showMessage("סיסמת ההחלקה נשמרה.")
-                        }
-                    }
-                }.show()
-            return
+            screen.addView(current, LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(8) })
+            screen.tag = current
         }
 
-        val newInput = EditText(this).apply {
-            hint = when (mode) {
-                "PIN4" -> "סיסמה חדשה — בדיוק 4 ספרות"
-                else -> "סיסמה חדשה — מספרים ומילים"
-            }
-            inputType = if (mode == "PIN4")
-                InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            else
-                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            imeOptions = EditorInfo.IME_ACTION_DONE
-            setSingleLine(true)
-        }
-        box.addView(newInput, LinearLayout.LayoutParams(-1, dp(56)))
-
-        AlertDialog.Builder(this)
-            .setTitle("בחירת הסיסמה")
-            .setView(box)
-            .setPositiveButton("שמירה", null)
-            .setNegativeButton("ביטול", null)
-            .create().also { dialog ->
-                dialog.setOnShowListener {
-                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                        if (oldHash != null && hash(oldInput.text.toString()) != oldHash) {
-                            oldInput.error = "סיסמה נוכחית שגויה"
-                            return@setOnClickListener
-                        }
-                        val value = newInput.text.toString()
-                        val valid = if (mode == "PIN4") value.length == 4 && value.all { it.isDigit() } else value.length >= 4
-                        if (!valid) {
-                            newInput.error = "הסיסמה לא תקינה"
-                            return@setOnClickListener
-                        }
-                        prefs.edit().putString("pin_hash", hash(value)).putString("auth_mode", mode).apply()
-                        unlocked = true
-                        dialog.dismiss()
-                        showMessage("הסיסמה נשמרה.")
-                    }
+        when (mode) {
+            "PIN4" -> {
+                val input = EditText(this).apply {
+                    inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+                    textSize = 24f
+                    gravity = Gravity.CENTER
+                    setSingleLine(true)
+                    setTextColor(Color.WHITE)
+                    setHintTextColor(Color.WHITE)
+                    hint = "—  —  —  —"
+                    setBackgroundColor(Color.TRANSPARENT)
                 }
-            }.show()
+                screen.addView(input, LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(6) })
+
+                val keys = arrayOf(arrayOf("1","2","3"), arrayOf("4","5","6"), arrayOf("7","8","9"), arrayOf("","0","⌫"))
+                keys.forEach { values ->
+                    val row = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER
+                    }
+                    values.forEach { key ->
+                        row.addView(TextView(this).apply {
+                            text = key
+                            textSize = 24f
+                            setTextColor(Color.WHITE)
+                            gravity = Gravity.CENTER
+                            background = rounded(
+                                if (key.isEmpty()) Color.TRANSPARENT else Color.argb(35,255,255,255), 24
+                            )
+                            setOnClickListener {
+                                when (key) {
+                                    "⌫" -> if (input.text.isNotEmpty()) input.text.delete(input.text.length - 1, input.text.length)
+                                    "" -> {}
+                                    else -> if (input.text.length < 4) input.append(key)
+                                }
+                            }
+                        }, LinearLayout.LayoutParams(dp(64), dp(54)).apply {
+                            leftMargin = dp(5); rightMargin = dp(5); topMargin = dp(3); bottomMargin = dp(3)
+                        })
+                    }
+                    screen.addView(row)
+                }
+
+                addPasswordActionButtons(screen, oldHash, mode, input)
+            }
+
+            "PATTERN" -> {
+                screen.addView(TextView(this).apply {
+                    text = "Your Device secure with pattern lock"
+                    textSize = 13f
+                    setTextColor(Color.rgb(180, 225, 215))
+                    gravity = Gravity.CENTER
+                }, LinearLayout.LayoutParams(-1, dp(28)))
+
+                screen.addView(TextView(this).apply {
+                    text = "↓  Draw Your Pattern"
+                    textSize = 15f
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.CENTER
+                }, LinearLayout.LayoutParams(-1, dp(42)))
+
+                val pattern = PatternLockView(this)
+                var chosen: List<Int>? = null
+                pattern.onPatternComplete = { value -> chosen = value }
+                screen.addView(pattern, LinearLayout.LayoutParams(-1, dp(270)))
+
+                val actions = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER
+                }
+                actions.addView(Button(this@MainActivity).apply {
+                    text = "Cancel"
+                    isAllCaps = false
+                    setOnClickListener { showPasswordSelection() }
+                }, LinearLayout.LayoutParams(0, dp(58), 1f).apply { rightMargin = dp(8) })
+                actions.addView(Button(this@MainActivity).apply {
+                    text = "Continue"
+                    isAllCaps = false
+                    setOnClickListener {
+                        val current = screen.tag as? EditText
+                        if (oldHash != null && (current == null || hash(current.text.toString()) != oldHash)) {
+                            current?.error = "סיסמה נוכחית שגויה"
+                            return@setOnClickListener
+                        }
+                        val value = chosen
+                        if (value == null || value.size < 4) {
+                            showMessage("צייר לפחות 4 עיגולים.")
+                            return@setOnClickListener
+                        }
+                        prefs.edit()
+                            .putString("pin_hash", hash("PATTERN:" + value.joinToString(",")))
+                            .putString("auth_mode", "PATTERN")
+                            .apply()
+                        unlocked = true
+                        showHome()
+                    }
+                }, LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(8) })
+                screen.addView(actions, LinearLayout.LayoutParams(-1, dp(68)))
+            }
+
+            else -> {
+                screen.addView(TextView(this).apply {
+                    text = "מספרים ומילים — באורך חופשי"
+                    textSize = 14f
+                    setTextColor(Color.rgb(239,236,255))
+                    gravity = Gravity.CENTER
+                }, LinearLayout.LayoutParams(-1, dp(30)))
+
+                val input = EditText(this).apply {
+                    hint = "סיסמה חדשה"
+                    inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                    textSize = 20f
+                    gravity = Gravity.CENTER
+                    setSingleLine(true)
+                    setTextColor(Color.WHITE)
+                    setHintTextColor(Color.argb(190,255,255,255))
+                }
+                screen.addView(input, LinearLayout.LayoutParams(-1, dp(60)).apply { bottomMargin = dp(12) })
+                addPasswordActionButtons(screen, oldHash, mode, input)
+            }
+        }
+
+        content.addView(screen, LinearLayout.LayoutParams(-1, -2))
+    }
+
+    private fun addPasswordActionButtons(
+        screen: LinearLayout,
+        oldHash: String?,
+        mode: String,
+        input: EditText
+    ) {
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        actions.addView(Button(this).apply {
+            text = "ביטול"
+            isAllCaps = false
+            setOnClickListener { showPasswordSelection() }
+        }, LinearLayout.LayoutParams(0, dp(56), 1f).apply { rightMargin = dp(8) })
+        actions.addView(Button(this).apply {
+            text = "שמירה"
+            isAllCaps = false
+            setOnClickListener {
+                val current = screen.tag as? EditText
+                if (oldHash != null && (current == null || hash(current.text.toString()) != oldHash)) {
+                    current?.error = "סיסמה נוכחית שגויה"
+                    return@setOnClickListener
+                }
+                val value = input.text.toString()
+                val valid = if (mode == "PIN4") value.length == 4 && value.all { it.isDigit() } else value.length >= 4
+                if (!valid) {
+                    input.error = if (mode == "PIN4") "יש להזין בדיוק 4 ספרות" else "יש להזין לפחות 4 תווים"
+                    return@setOnClickListener
+                }
+                prefs.edit()
+                    .putString("pin_hash", hash(value))
+                    .putString("auth_mode", mode)
+                    .apply()
+                unlocked = true
+                showHome()
+            }
+        }, LinearLayout.LayoutParams(0, dp(56), 1f).apply { leftMargin = dp(8) })
+        screen.addView(actions, LinearLayout.LayoutParams(-1, dp(66)))
     }
 
     private fun requestUninstall() {
