@@ -24,6 +24,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import java.security.MessageDigest
 
 class MainActivity : Activity() {
@@ -201,8 +202,13 @@ class MainActivity : Activity() {
 
         addText("הכל במקום אחד: הגנת גלישה, חיפוש מוגן ונעילת אפליקציות. הפעל את מה שצריך ותן למגן לעשות את העבודה.")
 
-        addButton(if (active) "⏸ כבה הגנה" else "▶ הפעל הגנה", if (active) Color.rgb(183,28,28) else Color.rgb(46,125,50)) {
-            if (BlockerVpnService.isProtectionActive) stopProtection() else requestVpnPermission()
+        addButton(
+            if (active) "✓  ההגנה פעילה" else "▶  הפעל הגנה",
+            if (active) Color.rgb(46,125,50) else Color.rgb(21,101,192),
+            selected = active
+        ) {
+            if (BlockerVpnService.isProtectionActive) requestStopProtection()
+            else requestVpnPermission()
         }
         addButton("🔎 פתח חיפוש מוגן") { openProtectedSearch() }
         addButton("🔐  נעילת אפליקציות", Color.rgb(55, 78, 102)) { openAppControl() }
@@ -276,15 +282,40 @@ class MainActivity : Activity() {
         })
     }
 
-    private fun addButton(text: String, color: Int = Color.WHITE, action: () -> Unit) {
+    private fun addButton(
+        text: String,
+        color: Int = Color.WHITE,
+        selected: Boolean = false,
+        action: () -> Unit
+    ) {
         content.addView(Button(this).apply {
             this.text = text
             textSize = 15f
             isAllCaps = false
+            isSelected = selected
+            stateListAnimator = null
             setTextColor(if (color == Color.WHITE) Color.rgb(30,45,60) else Color.WHITE)
-            background = rounded(color, 18)
-            setOnClickListener { action() }
+            background = buttonStates(color, selected)
+            setOnClickListener {
+                isPressed = true
+                postDelayed({ isPressed = false }, 120L)
+                action()
+            }
         }, LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(10) })
+    }
+
+    private fun buttonStates(base: Int, selected: Boolean): StateListDrawable {
+        val states = StateListDrawable()
+        val pressed = if (base == Color.WHITE) Color.rgb(225, 232, 240) else Color.rgb(
+            (Color.red(base) * 0.78f).toInt(),
+            (Color.green(base) * 0.78f).toInt(),
+            (Color.blue(base) * 0.78f).toInt()
+        )
+        val selectedColor = if (base == Color.WHITE) Color.rgb(215, 230, 245) else base
+        states.addState(intArrayOf(android.R.attr.state_pressed), rounded(pressed, 18))
+        states.addState(intArrayOf(android.R.attr.state_selected), rounded(selectedColor, 18))
+        states.addState(intArrayOf(), rounded(base, 18))
+        return states
     }
 
     private fun requestVpnPermission() {
@@ -316,6 +347,39 @@ class MainActivity : Activity() {
             status.text = "○  ההגנה כבויה"
             status.setTextColor(Color.rgb(183,28,28))
         }
+        showHome()
+    }
+
+    private fun requestStopProtection() {
+        val pinHash = prefs.getString("pin_hash", null)
+        if (pinHash == null) {
+            showMessage("כדי לכבות את ההגנה צריך להגדיר קוד גישה.")
+            return
+        }
+        val input = EditText(this).apply {
+            hint = "קוד גישה"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            setSingleLine(true)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("כיבוי הגנת הגלישה")
+            .setMessage("ההגנה פעילה. כדי לכבות אותה יש לאשר עם קוד הגישה.")
+            .setView(input)
+            .setPositiveButton("כיבוי", null)
+            .setNegativeButton("ביטול", null)
+            .create().also { dialog ->
+                dialog.setOnShowListener {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                        if (hash(input.text.toString()) != pinHash) {
+                            input.error = "קוד שגוי"
+                            return@setOnClickListener
+                        }
+                        dialog.dismiss()
+                        stopProtection()
+                    }
+                }
+            }.show()
     }
 
     private fun requestDeviceAdmin() {
