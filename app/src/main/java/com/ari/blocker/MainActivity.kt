@@ -330,7 +330,7 @@ class MainActivity : Activity() {
             setTextColor(Color.rgb(91, 62, 160))
             gravity = Gravity.CENTER_VERTICAL
         }, LinearLayout.LayoutParams(0, dp(64), 1f))
-        row.addView(android.widget.Switch(this).apply {
+        val protectionSwitch = android.widget.Switch(this).apply {
             isChecked = active
             text = ""
             scaleX = 1.18f
@@ -344,7 +344,11 @@ class MainActivity : Activity() {
                     requestStopProtection()
                 }
             }
-        }, LinearLayout.LayoutParams(dp(66), dp(58)))
+        }
+        row.addView(protectionSwitch, LinearLayout.LayoutParams(dp(66), dp(58)))
+        row.setOnClickListener {
+            protectionSwitch.performClick()
+        }
         return row
     }
 
