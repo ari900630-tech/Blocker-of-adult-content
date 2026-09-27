@@ -34,6 +34,14 @@ class AppBlockAccessibilityService : AccessibilityService() {
             return
         }
 
+        // Protected browsers may only be opened through the protected search
+        // inside this app. A direct launch is never authorized by the gate.
+        if (isProtectedBrowser && temporaryAllowedPackage != pkg) {
+            unlockedPackage = null
+            launchGate(pkg, allowAuthentication = false)
+            return
+        }
+
         if (temporaryAllowedPackage == pkg && System.currentTimeMillis() < temporaryAllowedUntil) {
             unlockedPackage = pkg
             temporaryAllowedPackage = null
@@ -47,10 +55,15 @@ class AppBlockAccessibilityService : AccessibilityService() {
         if (now - gateLaunchAt < 1200L) return
         gateLaunchAt = now
 
+        launchGate(pkg, allowAuthentication = true)
+    }
+
+    private fun launchGate(pkg: String, allowAuthentication: Boolean) {
         startActivity(
             Intent(this, AppGateActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 putExtra("blocked_package", pkg)
+                putExtra("allow_authentication", allowAuthentication)
             }
         )
     }
