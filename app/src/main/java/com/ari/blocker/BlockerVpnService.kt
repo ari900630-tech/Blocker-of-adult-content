@@ -74,7 +74,7 @@ class BlockerVpnService : VpnService() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "מגן התוכן", NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel(CHANNEL_ID, "מגן +", NotificationManager.IMPORTANCE_LOW)
             )
         }
 
@@ -84,7 +84,7 @@ class BlockerVpnService : VpnService() {
         )
 
         val notification = Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("מגן התוכן פעיל")
+            .setContentTitle("מגן + פעיל")
             .setContentText("סינון DNS פועל")
             .setSmallIcon(R.drawable.ic_blocker_shield)
             .setContentIntent(openIntent)
@@ -142,7 +142,7 @@ class BlockerVpnService : VpnService() {
             // DNS-only VPN: keep normal Chrome/Internet traffic outside the VPN.
             // This avoids the previous bug where non-DNS packets were dropped.
             vpn = Builder()
-                .setSession("מגן התוכן - DNS")
+                .setSession("מגן + - DNS")
                 .setMtu(1500)
                 .addAddress("10.10.0.2", 32)
                 .addRoute("10.10.0.1", 32)
@@ -215,7 +215,7 @@ class BlockerVpnService : VpnService() {
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_blocker_shield)
             .setContentTitle("האתר חסום")
-            .setContentText("מגן התוכן חסם את האתר שביקשת לפתוח.")
+            .setContentText("מגן + חסם את האתר שביקשת לפתוח.")
             .setAutoCancel(true)
             .addAction(Notification.Action.Builder(null, "חיפוש חדש", searchIntent).build())
             .build()
