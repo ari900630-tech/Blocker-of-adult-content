@@ -141,28 +141,65 @@ class MainActivity : Activity() {
     private fun showLockScreen() {
         unlocked = false
         content.removeAllViews()
-        addCardTitle("🔐 קוד גישה")
-        addText("הזן את הקוד שהגדרת. אפשר לאשר גם דרך כפתור ✓ במקלדת.")
-        val mode = prefs.getString("auth_mode", "PIN4")
-        val input = EditText(this)
-        input.apply {
-            hint = if (mode == "PIN4") "4 ספרות" else "קוד גישה"
-            inputType = if (mode == "PIN4") InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            textSize = 20f
-            gravity = Gravity.CENTER
-            isSingleLine = true
-            imeOptions = EditorInfo.IME_ACTION_DONE
-            setOnEditorActionListener { _, actionId, event ->
-                if (actionId == EditorInfo.IME_ACTION_DONE || event?.keyCode == KeyEvent.KEYCODE_ENTER) {
-                    verifyMainCode(input)
-                    true
-                } else false
-            }
+        content.setPadding(dp(18), dp(12), dp(18), dp(18))
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(22), dp(22), dp(22), dp(20))
+            background = rounded(Color.rgb(151, 133, 247), 30)
         }
-        content.addView(input, LinearLayout.LayoutParams(-1, dp(60)).apply { bottomMargin = dp(12) })
-        addButton("✓ אישור", Color.rgb(21, 101, 192)) { verifyMainCode(input) }
+        card.addView(TextView(this).apply { text="🛡️🔒"; textSize=46f; gravity=Gravity.CENTER },
+            LinearLayout.LayoutParams(-1, dp(62)))
+        card.addView(TextView(this).apply {
+            text="פתח את מגן התוכן"; textSize=23f; typeface=Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE); gravity=Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(40)))
+        card.addView(TextView(this).apply {
+            text="הזן את הקוד"; textSize=15f; setTextColor(Color.rgb(241,238,255)); gravity=Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(30)))
+
+        val mode = prefs.getString("auth_mode", "PIN4")
+        if (mode == "PIN4") {
+            val input = EditText(this).apply {
+                tag = "main_pin_input"
+                inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+                textSize = 24f; gravity = Gravity.CENTER; isSingleLine = true
+                setBackgroundColor(Color.TRANSPARENT)
+                setTextColor(Color.WHITE)
+                setHintTextColor(Color.argb(180,255,255,255))
+                hint = "—  —  —  —"
+            }
+            card.addView(input, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin=dp(8) })
+            val keys = arrayOf(arrayOf("1","2","3"),arrayOf("4","5","6"),arrayOf("7","8","9"),arrayOf("","0","⌫"))
+            keys.forEach { rowValues ->
+                val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER }
+                rowValues.forEach { key ->
+                    val b=TextView(this).apply {
+                        text=key; textSize=24f; setTextColor(Color.WHITE); gravity=Gravity.CENTER
+                        background=rounded(if(key.isEmpty()) Color.TRANSPARENT else Color.argb(45,255,255,255), 22)
+                        setOnClickListener {
+                            when(key) {
+                                "⌫" -> if(input.text.isNotEmpty()) input.text.delete(input.text.length-1,input.text.length)
+                                "" -> {}
+                                else -> if(input.text.length<4) { input.append(key); if(input.text.length==4) verifyMainCode(input) }
+                            }
+                        }
+                    }
+                    row.addView(b, LinearLayout.LayoutParams(dp(62),dp(52)).apply { leftMargin=dp(5);rightMargin=dp(5);topMargin=dp(4);bottomMargin=dp(4) })
+                }
+                card.addView(row)
+            }
+        } else {
+            val input=EditText(this).apply {
+                hint="קוד גישה"; inputType=InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                textSize=20f; gravity=Gravity.CENTER; setSingleLine(true)
+            }
+            card.addView(input,LinearLayout.LayoutParams(-1,dp(58)).apply{bottomMargin=dp(10)})
+            addButton("✓ אישור",Color.rgb(88,231,226)){verifyMainCode(input)}
+        }
         if (mode == "BIOMETRIC") addButton("טביעת אצבע / ביומטריה") { authenticateMainBiometric() }
+        content.addView(card,LinearLayout.LayoutParams(-1,-2))
     }
 
     private fun verifyMainCode(input: EditText) {
@@ -352,7 +389,50 @@ class MainActivity : Activity() {
     }
 
     private fun showAppControl() {
-        startActivity(Intent(this, AppControlActivity::class.java))
+        content.removeAllViews()
+        content.setPadding(dp(14), dp(6), dp(14), dp(12))
+
+        val header=LinearLayout(this).apply{
+            orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(14),dp(10),dp(14),dp(10)); background=rounded(Color.argb(150,255,255,255),22)
+        }
+        header.addView(TextView(this).apply{text="📱";textSize=28f;gravity=Gravity.CENTER},LinearLayout.LayoutParams(dp(46),dp(50)))
+        header.addView(TextView(this).apply{
+            text="האפליקציות שלי";textSize=22f;typeface=Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL
+        },LinearLayout.LayoutParams(0,dp(50),1f))
+        content.addView(header,LinearLayout.LayoutParams(-1,dp(70)).apply{bottomMargin=dp(10)})
+
+        val apps=getLauncherApps()
+        val list=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+        apps.forEach { app ->
+            val pkg=app.activityInfo.packageName
+            val label=runCatching{app.activityInfo.loadLabel(packageManager).toString()}.getOrDefault(pkg)
+            val icon=runCatching{app.activityInfo.loadIcon(packageManager)}.getOrNull()
+            val locked=getSharedPreferences("app_control",MODE_PRIVATE).getStringSet("blocked_apps",emptySet())?.contains(pkg)==true
+            val row=LinearLayout(this).apply{
+                orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL
+                setPadding(dp(10),dp(5),dp(10),dp(5));background=rounded(Color.argb(245,255,255,255),20)
+            }
+            if(icon!=null) row.addView(android.widget.ImageView(this).apply{setImageDrawable(icon);scaleType=android.widget.ImageView.ScaleType.CENTER_INSIDE},
+                LinearLayout.LayoutParams(dp(52),dp(52)).apply{leftMargin=dp(6);rightMargin=dp(8)})
+            row.addView(TextView(this).apply{
+                text=label;textSize=16f;typeface=Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(63,45,115));gravity=Gravity.CENTER_VERTICAL
+            },LinearLayout.LayoutParams(0,dp(62),1f))
+            row.addView(android.widget.Switch(this).apply{
+                isChecked=locked;scaleX=1.08f;scaleY=1.08f
+                setOnCheckedChangeListener { _,checked ->
+                    val s=getSharedPreferences("app_control",MODE_PRIVATE).getStringSet("blocked_apps",emptySet()).toMutableSet()
+                    if(checked)s.add(pkg) else s.remove(pkg)
+                    getSharedPreferences("app_control",MODE_PRIVATE).edit().putStringSet("blocked_apps",s).apply()
+                    row.background=rounded(if(checked)Color.rgb(226,255,245) else Color.argb(245,255,255,255),20)
+                }
+            },LinearLayout.LayoutParams(dp(62),dp(58)))
+            list.addView(row,LinearLayout.LayoutParams(-1,dp(72)).apply{bottomMargin=dp(8)})
+        }
+        val scroll=ScrollView(this).apply{addView(list)}
+        content.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
     }
 
     private fun getLauncherApps(): List<android.content.pm.ResolveInfo> {
@@ -443,18 +523,34 @@ class MainActivity : Activity() {
 
     private fun showSettings() {
         content.removeAllViews()
-        addCardTitle("הגדרות המגן")
-        addText("הגדרות אבטחה, קוד, בקרת אפליקציות ועדכונים.")
-        addButton("🔐 סוג קוד / טביעת אצבע", Color.rgb(21,101,192)) { setPin() }
-        addButton("🙈 הסתר את סמל האפליקציה") { hideLauncherIcon() }
-        addButton("👁️ הצג את סמל האפליקציה") { showLauncherIcon() }
-        addButton("↻ עדכון האפליקציה", Color.rgb(46,125,50)) { AppUpdater.downloadAndInstall(this) }
-        addButton("⚙ פתח הגדרות VPN") { startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }
-        addButton("⏸ השבת את ההגנה", Color.rgb(183,28,28)) {
-            if (BlockerVpnService.isProtectionActive) requestStopProtection()
-            else showMessage("ההגנה כבר מושבתת.")
-        }
+        content.setPadding(dp(14),dp(6),dp(14),dp(12))
+        addCardTitle("⚙️ הגדרות")
+        val cards=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+        cards.addView(settingsSection("🔐","אבטחה","סוג קוד / טביעת אצבע"){setPin()})
+        cards.addView(settingsSection("🙈","סמל האפליקציה","הסתר / הצג"){hideLauncherIcon()})
+        cards.addView(settingsSection("↻","עדכון","התקן את הגרסה האחרונה"){AppUpdater.downloadAndInstall(this)})
+        cards.addView(settingsSection("🌐","הגנת גלישה","הגדרות VPN"){startActivity(Intent(Settings.ACTION_VPN_SETTINGS))})
+        cards.addView(settingsSection("⏸","כיבוי ההגנה","כיבוי מוגן בקוד"){
+            if(BlockerVpnService.isProtectionActive) requestStopProtection() else showMessage("ההגנה כבר כבויה.")
+        })
+        content.addView(cards)
         addDeviceManagementControls()
+    }
+
+    private fun settingsSection(icon:String,title:String,subtitle:String,action:()->Unit):LinearLayout{
+        return LinearLayout(this).apply{
+            orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(12),dp(7),dp(12),dp(7));background=rounded(Color.argb(220,255,255,255),22)
+            setOnClickListener{action()}
+            addView(TextView(this@MainActivity).apply{text=icon;textSize=24f;gravity=Gravity.CENTER},
+                LinearLayout.LayoutParams(dp(48),dp(58)))
+            addView(LinearLayout(this@MainActivity).apply{
+                orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL
+                addView(TextView(this@MainActivity).apply{text=title;textSize=16f;typeface=Typeface.DEFAULT_BOLD;setTextColor(Color.rgb(72,50,130))})
+                addView(TextView(this@MainActivity).apply{text=subtitle;textSize=12f;setTextColor(Color.rgb(120,105,160))})
+            },LinearLayout.LayoutParams(0,dp(58),1f))
+            addView(TextView(this@MainActivity).apply{text="›";textSize=25f;setTextColor(Color.rgb(125,96,226));gravity=Gravity.CENTER},LinearLayout.LayoutParams(dp(30),dp(58)))
+        }.also{ it.layoutParams=LinearLayout.LayoutParams(-1,dp(74)).apply{bottomMargin=dp(8)} }
     }
 
     private fun addDeviceManagementControls() {
