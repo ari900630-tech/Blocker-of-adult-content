@@ -18,6 +18,7 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
@@ -37,6 +38,9 @@ class MainActivity : Activity() {
     private var unlocked = false
     private val navButtons = mutableListOf<TextView>()
     private var selectedNav = 0
+    private var swipeDownX = 0f
+    private var swipeDownY = 0f
+    private var swipeTracking = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -694,15 +698,6 @@ class MainActivity : Activity() {
             if(BlockerVpnService.isProtectionActive) requestStopProtection() else showMessage("ההגנה כבר כבויה.")
         })
         content.addView(cards)
-        val note = TextView(this).apply {
-            text = "הערה: בהפעלת הגנת הגלישה Android עשוי להציג מסך אישור מערכת. לאחר האישור חוזרים אוטומטית למגן +."
-            textSize = 12f
-            setTextColor(Color.rgb(95, 82, 125))
-            setPadding(dp(14), dp(8), dp(14), dp(8))
-            gravity = Gravity.CENTER
-            background = rounded(Color.argb(180, 255, 255, 255), 16)
-        }
-        content.addView(note, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(6) })
         addDeviceManagementControls()
     }
 
@@ -741,7 +736,6 @@ class MainActivity : Activity() {
                 startActivity(intent)
             }
         }
-        addText("הערה: הרשאת מנהל המכשיר לבדה אינה הופכת את האפליקציה ל-Device Owner. במכשיר שכבר מוגדר לשימוש, Android דורש תהליך ניהול/Provisioning מתאים כדי לקבל את היכולת לחסום הסרה. המראה המדויק של מסך ההגדרות תלוי בגרסת Android וביצרן.")
     }
 
     private fun addCardTitle(text: String) {
@@ -797,6 +791,70 @@ class MainActivity : Activity() {
         states.addState(intArrayOf(android.R.attr.state_selected), rounded(selectedColor, 18))
         states.addState(intArrayOf(), rounded(base, 18))
         return states
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                swipeDownX = event.x
+                swipeDownY = event.y
+                swipeTracking = true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (swipeTracking && event.actionMasked == MotionEvent.ACTION_UP) {
+                    val dx = event.x - swipeDownX
+                    val dy = event.y - swipeDownY
+                    if (kotlin.math.abs(dx) >= dp(90) && kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.35f) {
+                        val pattern = findPatternLockView(content)
+                        val insidePattern = pattern != null && isPointInsideView(pattern, swipeDownX, swipeDownY)
+                        if (!insidePattern) {
+                            if (dx < 0) navigateBySwipe(1) else navigateBySwipe(-1)
+                            swipeTracking = false
+                            return true
+                        }
+                    }
+                }
+                swipeTracking = false
+            }
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
+    private fun navigateBySwipe(direction: Int) {
+        if (!unlocked && prefs.getString("pin_hash", null) != null) {
+            showLockScreen()
+            return
+        }
+        val next = (selectedNav + direction).coerceIn(0, 3)
+        if (next == selectedNav) return
+        selectedNav = next
+        refreshNavSelection()
+        when (selectedNav) {
+            0 -> showHome()
+            1 -> showAppControl()
+            2 -> showSettings()
+            3 -> showPasswordSelection()
+        }
+    }
+
+    private fun findPatternLockView(view: View): PatternLockView? {
+        if (view is PatternLockView) return view
+        if (view is android.view.ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findPatternLockView(view.getChildAt(i))?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun isPointInsideView(view: View, x: Float, y: Float): Boolean {
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        val rootLocation = IntArray(2)
+        window.decorView.getLocationOnScreen(rootLocation)
+        val left = location[0] - rootLocation[0]
+        val top = location[1] - rootLocation[1]
+        return x >= left && x <= left + view.width && y >= top && y <= top + view.height
     }
 
     private fun requestVpnPermission() {
@@ -1032,57 +1090,65 @@ class MainActivity : Activity() {
             }
 
             "PATTERN" -> {
-                screen.addView(TextView(this).apply {
-                    text = "Your Device secure with pattern lock"
-                    textSize = 13f
-                    setTextColor(Color.rgb(180, 225, 215))
-                    gravity = Gravity.CENTER
-                }, LinearLayout.LayoutParams(-1, dp(28)))
+                // Match the supplied reference: a clean dark pattern-lock panel with
+                // only the 3x3 pattern and the two bottom actions.
+                screen.setPadding(0, dp(8), 0, dp(12))
+                screen.background = rounded(Color.rgb(5, 34, 48), 28)
 
-                screen.addView(TextView(this).apply {
-                    text = "↓  Draw Your Pattern"
-                    textSize = 15f
-                    setTextColor(Color.WHITE)
-                    gravity = Gravity.CENTER
-                }, LinearLayout.LayoutParams(-1, dp(42)))
-
-                val pattern = PatternLockView(this)
+                val pattern = PatternLockView(this).apply {
+                    gapRatio = 0.35f
+                    dotRadiusRatio = 0.063f
+                }
                 var chosen: List<Int>? = null
                 pattern.onPatternComplete = { value -> chosen = value }
-                screen.addView(pattern, LinearLayout.LayoutParams(-1, dp(270)))
+                screen.addView(pattern, LinearLayout.LayoutParams(-1, dp(315)))
 
                 val actions = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER
+                    setPadding(dp(42), 0, dp(42), 0)
                 }
-                actions.addView(Button(this@MainActivity).apply {
-                    text = "Cancel"
-                    isAllCaps = false
-                    setOnClickListener { showPasswordSelection() }
-                }, LinearLayout.LayoutParams(0, dp(58), 1f).apply { rightMargin = dp(8) })
-                actions.addView(Button(this@MainActivity).apply {
-                    text = "Continue"
-                    isAllCaps = false
-                    setOnClickListener {
-                        val current = screen.tag as? EditText
-                        if (oldHash != null && (current == null || hash(current.text.toString()) != oldHash)) {
-                            current?.error = "סיסמה נוכחית שגויה"
-                            return@setOnClickListener
-                        }
-                        val value = chosen
-                        if (value == null || value.size < 4) {
-                            showMessage("צייר לפחות 4 עיגולים.")
-                            return@setOnClickListener
-                        }
-                        prefs.edit()
-                            .putString("pin_hash", hash("PATTERN:" + value.joinToString(",")))
-                            .putString("auth_mode", "PATTERN")
-                            .apply()
-                        unlocked = true
-                        showHome()
+
+                fun actionButton(label: String, action: () -> Unit) =
+                    TextView(this@MainActivity).apply {
+                        text = label
+                        textSize = 20f
+                        setTextColor(Color.rgb(35, 35, 35))
+                        gravity = Gravity.CENTER
+                        background = rounded(Color.rgb(211, 211, 211), 3)
+                        setOnClickListener { action() }
                     }
-                }, LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(8) })
-                screen.addView(actions, LinearLayout.LayoutParams(-1, dp(68)))
+
+                // RTL layout: Continue is on the left and Cancel on the right,
+                // exactly as in the supplied reference image.
+                actions.addView(actionButton("Continue") {
+                    val current = screen.tag as? EditText
+                    if (oldHash != null && (current == null || hash(current.text.toString()) != oldHash)) {
+                        current?.error = "סיסמה נוכחית שגויה"
+                        return@actionButton
+                    }
+                    val value = chosen
+                    if (value == null || value.size < 4) {
+                        showMessage("צייר לפחות 4 עיגולים.")
+                        return@actionButton
+                    }
+                    prefs.edit()
+                        .putString("pin_hash", hash("PATTERN:" + value.joinToString(",")))
+                        .putString("auth_mode", "PATTERN")
+                        .apply()
+                    unlocked = true
+                    showHome()
+                }, LinearLayout.LayoutParams(0, dp(60), 1f).apply {
+                    rightMargin = dp(5)
+                })
+
+                actions.addView(actionButton("Cancel") {
+                    showPasswordSelection()
+                }, LinearLayout.LayoutParams(0, dp(60), 1f).apply {
+                    leftMargin = dp(5)
+                })
+
+                screen.addView(actions, LinearLayout.LayoutParams(-1, dp(60)))
             }
 
             else -> {
