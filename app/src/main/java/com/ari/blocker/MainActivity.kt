@@ -200,43 +200,146 @@ class MainActivity : Activity() {
 
     private fun showHome() {
         content.removeAllViews()
-        addCardTitle("App Lock")
-        addText("הגנה ונעילת אפליקציות")
-        val active = BlockerVpnService.isProtectionActive
+        content.setPadding(dp(14), dp(4), dp(14), dp(12))
 
-        addProtectionSwitch(active)
-        addButton("🌐  חיפוש מוגן", Color.rgb(88, 231, 226)) { requestProtectedSearch() }
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(18), dp(20), dp(18), dp(18))
+            background = rounded(Color.argb(235, 125, 96, 226), 30)
+        }
+
+        hero.addView(TextView(this).apply {
+            text = "🛡️"
+            textSize = 58f
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(78)))
+
+        hero.addView(TextView(this).apply {
+            text = "מגן התוכן"
+            textSize = 28f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(42)))
+
+        hero.addView(TextView(this).apply {
+            text = "הגנה חכמה לאפליקציות שלך"
+            textSize = 15f
+            setTextColor(Color.rgb(239, 236, 255))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(30)))
+
+        val active = BlockerVpnService.isProtectionActive
+        hero.addView(addCuteProtectionSwitch(active), LinearLayout.LayoutParams(-1, dp(82)).apply {
+            topMargin = dp(14)
+            bottomMargin = dp(10)
+        })
+
+        hero.addView(TextView(this).apply {
+            text = if (active) "✓ ההגנה פעילה" else "○ ההגנה כבויה"
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(28)))
+
+        content.addView(hero, LinearLayout.LayoutParams(-1, dp(310)).apply {
+            bottomMargin = dp(14)
+        })
+
+        val search = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(8), dp(10), dp(8))
+            background = rounded(Color.argb(245, 255, 255, 255), 24)
+            setOnClickListener { requestProtectedSearch() }
+        }
+        search.addView(TextView(this).apply {
+            text = "🔎"
+            textSize = 25f
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(dp(46), dp(54)))
+        search.addView(TextView(this).apply {
+            text = "חיפוש מוגן"
+            textSize = 17f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(76, 53, 140))
+            gravity = Gravity.CENTER_VERTICAL
+        }, LinearLayout.LayoutParams(0, dp(54), 1f))
+        search.addView(TextView(this).apply {
+            text = "›"
+            textSize = 28f
+            setTextColor(Color.rgb(118, 91, 220))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(dp(34), dp(54)))
+        content.addView(search, LinearLayout.LayoutParams(-1, dp(70)).apply {
+            bottomMargin = dp(12)
+        })
+
+        val quick = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        quick.addView(homeQuickCard("📱", "האפליקציות שלי") { showAppControl() },
+            LinearLayout.LayoutParams(0, dp(78), 1f).apply { rightMargin = dp(6) })
+        quick.addView(homeQuickCard("⚙️", "הגדרות") { showSettings() },
+            LinearLayout.LayoutParams(0, dp(78), 1f).apply { leftMargin = dp(6) })
+        content.addView(quick, LinearLayout.LayoutParams(-1, dp(78)))
     }
 
-    private fun addProtectionSwitch(active: Boolean) {
+    private fun addCuteProtectionSwitch(active: Boolean): LinearLayout {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(12), dp(8))
-            background = rounded(Color.argb(245, 255, 255, 255), 24)
+            setPadding(dp(16), dp(8), dp(14), dp(8))
+            background = rounded(Color.argb(245, 255, 255, 255), 25)
         }
         row.addView(TextView(this).apply {
-            text = if (active) "●  Protection ON" else "○  Protection OFF"
+            text = if (active) "הגנה פעילה" else "הפעל הגנה"
             textSize = 17f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(58, 37, 104))
+            setTextColor(Color.rgb(91, 62, 160))
             gravity = Gravity.CENTER_VERTICAL
-        }, LinearLayout.LayoutParams(0, dp(62), 1f))
+        }, LinearLayout.LayoutParams(0, dp(64), 1f))
         row.addView(android.widget.Switch(this).apply {
             isChecked = active
             text = ""
+            scaleX = 1.18f
+            scaleY = 1.18f
             contentDescription = if (active) "כיבוי ההגנה" else "הפעלת ההגנה"
             setOnCheckedChangeListener { _, checked ->
                 if (checked) {
                     requestVpnPermission()
                 } else {
-                    // כיבוי בלבד דורש קוד; הפעלה אינה דורשת קוד.
                     isChecked = true
                     requestStopProtection()
                 }
             }
-        }, LinearLayout.LayoutParams(dp(64), dp(56)))
-        content.addView(row, LinearLayout.LayoutParams(-1, dp(78)).apply { bottomMargin = dp(12) })
+        }, LinearLayout.LayoutParams(dp(66), dp(58)))
+        return row
+    }
+
+    private fun homeQuickCard(icon: String, label: String, action: () -> Unit): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(8), dp(5), dp(8), dp(5))
+            background = rounded(Color.argb(225, 255, 255, 255), 22)
+            setOnClickListener { action() }
+            addView(TextView(this@MainActivity).apply {
+                text = icon
+                textSize = 23f
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(-1, dp(32)))
+            addView(TextView(this@MainActivity).apply {
+                text = label
+                textSize = 12f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(91, 62, 160))
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(-1, dp(28)))
+        }
     }
 
     private fun requestProtectedSearch() {
