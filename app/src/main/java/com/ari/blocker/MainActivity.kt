@@ -288,8 +288,15 @@ class MainActivity : Activity() {
     }
 
     private fun requestVpnPermission() {
+        status.text = "…  ממתין לאישור ההגנה"
+        status.setTextColor(Color.rgb(21, 101, 192))
         val intent = VpnService.prepare(this)
-        if (intent != null) startActivityForResult(intent, VPN_REQUEST) else startProtection()
+        if (intent != null) {
+            startActivityForResult(intent, VPN_REQUEST)
+        } else {
+            startProtection()
+            showHome()
+        }
     }
 
     private fun startProtection() {
@@ -464,7 +471,14 @@ class MainActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == VPN_REQUEST && resultCode == RESULT_OK) startProtection()
+        if (requestCode == VPN_REQUEST) {
+            if (resultCode == RESULT_OK) {
+                startProtection()
+            } else {
+                showHome()
+                showMessage("הפעלת ההגנה בוטלה. אפשר לנסות שוב.")
+            }
+        }
     }
 
     companion object {
