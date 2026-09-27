@@ -60,7 +60,7 @@ class MainActivity : Activity() {
             textSize = 34f
         }, LinearLayout.LayoutParams(dp(50), dp(54)))
         top.addView(TextView(this).apply {
-            text = "מגן התוכן\nשקט. שליטה. הגנה."
+            text = "מגן התוכן\nApp Lock"
             textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
@@ -81,19 +81,19 @@ class MainActivity : Activity() {
 
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-            background = rounded(Color.argb(235, 255, 255, 255), 22)
+            setPadding(dp(6), dp(5), dp(6), dp(5))
+            background = rounded(Color.argb(245, 255, 255, 255), 20)
         }
         val navItems = listOf(
             Triple("⌂", "ראשי", 0),
-            Triple("▦", "האפליקציות שלי", 1),
+            Triple("▦", "אפליקציות", 1),
             Triple("⚙", "הגדרות", 2)
         )
         navItems.forEach { (symbol, label, index) ->
             nav.addView(TextView(this).apply {
                 navButtons.add(this)
                 text = symbol
-                textSize = 28f
+                textSize = 22f
                 gravity = Gravity.CENTER
                 setTextColor(Color.rgb(58, 37, 104))
                 contentDescription = label
@@ -107,15 +107,15 @@ class MainActivity : Activity() {
                     refreshNavSelection()
                     when (index) {
                         0 -> showHome()
-                        1 -> openAppControl()
+                        1 -> showAppControl()
                         2 -> showSettings()
                     }
                 }
-            }, LinearLayout.LayoutParams(0, dp(54), 1f).apply {
+            }, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
                 leftMargin = dp(4); rightMargin = dp(4)
             })
         }
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(70)))
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(56)))
         setContentView(root)
         refreshNavSelection()
     }
@@ -134,7 +134,7 @@ class MainActivity : Activity() {
         addText("בפעם הראשונה יש להפעיל את ההגנה ולהגדיר דרך כניסה. לאחר מכן האפליקציה תוכל להגן על אתרים ואפליקציות שבחרת.")
         addButton("1. הגדר קוד / ביומטריה", Color.rgb(21, 101, 192)) { setPin() }
         addButton("2. הפעל הגנה", Color.rgb(46, 125, 50)) { requestVpnPermission() }
-        addButton("3. הגדר בקרת אפליקציות") { openAppControl() }
+        addButton("3. הגדר אפליקציות") { showAppControl() }
         addText("חשוב: Android לא מאפשר לאפליקציה רגילה לנעול את כפתור הבית/החזרה או להפעיל שירות נגישות בלי אישור מפורש שלך.")
     }
 
@@ -201,14 +201,11 @@ class MainActivity : Activity() {
     private fun showHome() {
         content.removeAllViews()
         addCardTitle("App Lock")
-        addText("מגן התוכן • אבטחה ושליטה באפליקציות")
+        addText("הגנה ונעילת אפליקציות")
         val active = BlockerVpnService.isProtectionActive
 
-        addText("הכל במקום אחד: הגנת גלישה, חיפוש מוגן ונעילת אפליקציות. הפעל את ההגנה מהמתג למטה.")
-
         addProtectionSwitch(active)
-        addButton("🌐  פתח חיפוש מוגן", Color.rgb(88, 231, 226)) { requestProtectedSearch() }
-        addButton("✨  אפשרויות נוספות") { showSettings() }
+        addButton("🌐  חיפוש מוגן", Color.rgb(88, 231, 226)) { requestProtectedSearch() }
     }
 
     private fun addProtectionSwitch(active: Boolean) {
@@ -251,8 +248,84 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
-    private fun openAppControl() {
+    private fun showAppControl() {
         startActivity(Intent(this, AppControlActivity::class.java))
+    }
+
+    private fun showAppControl() {
+        selectedNav = 1
+        refreshNavSelection()
+        content.removeAllViews()
+        addCardTitle("App Lock")
+        addText("בחר אפליקציות לנעילה")
+
+        if (!isAccessibilityEnabled()) {
+            addButton("▶ הפעל בקרת אפליקציות", Color.rgb(88, 231, 226)) { openAccessibilitySettings() }
+        }
+
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        getLauncherApps().forEach { app ->
+            val pkg = app.activityInfo.packageName
+            if (pkg == packageName) return@forEach
+            val label = runCatching { app.activityInfo.loadLabel(packageManager).toString() }.getOrDefault(pkg)
+            val icon = runCatching { app.activityInfo.loadIcon(packageManager) }.getOrNull()
+            val locked = prefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(10), dp(4), dp(8), dp(4))
+                background = rounded(Color.argb(245, 255, 255, 255), 18)
+            }
+            if (icon != null) row.addView(android.widget.ImageView(this).apply {
+                setImageDrawable(icon)
+                scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+            }, LinearLayout.LayoutParams(dp(44), dp(44)).apply { leftMargin = dp(6); rightMargin = dp(8) })
+            row.addView(TextView(this).apply {
+                text = label
+                textSize = 15f
+                typeface = if (locked) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                setTextColor(Color.rgb(58, 37, 104))
+                gravity = Gravity.CENTER_VERTICAL
+            }, LinearLayout.LayoutParams(0, dp(50), 1f))
+            row.addView(android.widget.Switch(this).apply {
+                isChecked = locked
+                text = ""
+                contentDescription = "נעילת $label"
+                setOnCheckedChangeListener { _, checked ->
+                    val current = prefs.getStringSet("blocked_apps", emptySet())?.toMutableSet() ?: mutableSetOf()
+                    if (checked) current.add(pkg) else current.remove(pkg)
+                    prefs.edit().putStringSet("blocked_apps", current).apply()
+                }
+            }, LinearLayout.LayoutParams(dp(56), dp(50)))
+            list.addView(row, LinearLayout.LayoutParams(-1, dp(62)).apply { bottomMargin = dp(7) })
+        }
+        val scroll = ScrollView(this).apply { addView(list) }
+        content.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+    }
+
+    private fun getLauncherApps(): List<android.content.pm.ResolveInfo> {
+        val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+        return try {
+            packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL)
+                .filter { it.activityInfo?.packageName != packageName }
+                .groupBy { it.activityInfo.packageName }
+                .mapNotNull { (_, entries) -> entries.firstOrNull() }
+                .sortedBy { runCatching { it.activityInfo.loadLabel(packageManager).toString() }.getOrDefault(it.activityInfo.packageName) }
+        } catch (_: Exception) { emptyList() }
+    }
+
+    private fun isAccessibilityEnabled(): Boolean {
+        return try {
+            val manager = getSystemService(android.view.accessibility.AccessibilityManager::class.java) ?: return false
+            if (!manager.isEnabled) return false
+            manager.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+                .any { info -> info.resolveInfo?.serviceInfo?.packageName == packageName }
+        } catch (_: Exception) { false }
+    }
+
+    private fun openAccessibilitySettings() {
+        try { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        catch (_: Exception) { startActivity(Intent(Settings.ACTION_SETTINGS)) }
     }
 
     private fun openProtectedSearch() {
@@ -301,7 +374,7 @@ class MainActivity : Activity() {
                     text = domain
                     textSize = 16f
                     setTextColor(Color.rgb(30,45,60))
-                }, LinearLayout.LayoutParams(0, dp(54), 1f))
+                }, LinearLayout.LayoutParams(0, dp(44), 1f))
                 row.addView(Button(this).apply {
                     text = "ביטול חסימה"
                     isAllCaps = false
@@ -335,11 +408,7 @@ class MainActivity : Activity() {
     private fun addDeviceManagementControls() {
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val isOwner = dpm.isDeviceOwnerApp(packageName) || dpm.isProfileOwnerApp(packageName)
-        val text = if (isOwner) {
-            "🔒 נעילת הסרה פעילה: המכשיר מנוהל והסרת האפליקציה נחסמה."
-        } else {
-            "🔓 נעילת הסרה עדיין לא פעילה. כדי ש-Android יחסום את הסרה מתוך הגדרות המכשיר, האפליקציה חייבת להיות Device Owner/Profile Owner."
-        }
+        val text = if (isOwner) "🔒 הגנת הסרה פעילה" else "🔓 הגנת הסרה לא הופעלה"
         addText(text)
         if (isOwner) {
             addButton("✓ הגנת הסרה פעילה", Color.rgb(46,125,50), selected = true) {
