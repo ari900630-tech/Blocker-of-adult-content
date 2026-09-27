@@ -23,7 +23,6 @@
         android:theme="@style/Theme.Blocker">
         <activity android:name=".MainActivity" android:exported="true" />
         <activity android:name=".HiddenEntryActivity" android:exported="false" />
-        <activity android:name=".AppControlActivity" android:exported="false" />
         <activity android:name=".AppGateActivity" android:exported="false" />
         <receiver
             android:name=".BlockerDeviceAdminReceiver"
