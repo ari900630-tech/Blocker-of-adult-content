@@ -16,6 +16,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
+import android.view.View
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
@@ -692,6 +693,15 @@ class MainActivity : Activity() {
             if(BlockerVpnService.isProtectionActive) requestStopProtection() else showMessage("ההגנה כבר כבויה.")
         })
         content.addView(cards)
+        val note = TextView(this).apply {
+            text = "הערה: בהפעלת הגנת הגלישה Android עשוי להציג מסך אישור מערכת. לאחר האישור חוזרים אוטומטית למגן +."
+            textSize = 12f
+            setTextColor(Color.rgb(95, 82, 125))
+            setPadding(dp(14), dp(8), dp(14), dp(8))
+            gravity = Gravity.CENTER
+            background = rounded(Color.argb(180, 255, 255, 255), 16)
+        }
+        content.addView(note, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(6) })
         addDeviceManagementControls()
     }
 
@@ -789,27 +799,78 @@ class MainActivity : Activity() {
     }
 
     private fun requestVpnPermission() {
-        status.text = "…  ממתין לאישור ההגנה"
+        status.text = "מכין את ההגנה..."
         status.setTextColor(Color.rgb(21, 101, 192))
         val intent = VpnService.prepare(this)
-        if (intent != null) {
-            AlertDialog.Builder(this)
-                .setTitle("הפעלת הגנה")
-                .setMessage("Android צריך אישור חד־פעמי לחיבור ההגנה. לאחר האישור תחזור אוטומטית ל־מגן +.")
-                .setPositiveButton("המשך", null)
-                .setNegativeButton("ביטול", null)
-                .create().also { dialog ->
-                    dialog.setOnShowListener {
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                            dialog.dismiss()
-                            startActivityForResult(intent, VPN_REQUEST)
-                        }
-                    }
-                }.show()
-        } else {
+        if (intent == null) {
             startProtection()
             showHome()
+            return
         }
+
+        content.removeAllViews()
+        content.setPadding(dp(14), dp(10), dp(14), dp(12))
+
+        val guide = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(20), dp(22), dp(20), dp(20))
+            background = rounded(Color.argb(245, 255, 255, 255), 28)
+        }
+        guide.addView(TextView(this).apply {
+            text = "🛡️"
+            textSize = 48f
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(64)))
+        guide.addView(TextView(this).apply {
+            text = "הפעלת ההגנה"
+            textSize = 23f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(76, 53, 140))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(42)))
+        guide.addView(TextView(this).apply {
+            text = "Android יבקש עכשיו אישור לחיבור ההגנה."
+            textSize = 15f
+            setTextColor(Color.rgb(82, 72, 105))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(36)))
+
+        val target = FrameLayout(this).apply {
+            background = rounded(Color.rgb(245, 242, 255), 24)
+        }
+        val pulse = View(this).apply {
+            background = rounded(Color.rgb(125, 96, 226), 100)
+            contentDescription = "כאן לוחצים להמשך"
+        }
+        target.addView(pulse, FrameLayout.LayoutParams(dp(54), dp(54), Gravity.CENTER))
+        target.addView(TextView(this).apply {
+            text = "①"
+            textSize = 18f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        }, FrameLayout.LayoutParams(dp(54), dp(54), Gravity.CENTER))
+        guide.addView(target, LinearLayout.LayoutParams(dp(120), dp(120)).apply {
+            topMargin = dp(12); bottomMargin = dp(12)
+        })
+        guide.addView(TextView(this).apply {
+            text = "לחץ על הכפתור במסך Android כדי לאשר. לאחר מכן תחזור אוטומטית למגן +."
+            textSize = 15f
+            setTextColor(Color.rgb(76, 53, 140))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(58)))
+        guide.addView(Button(this).apply {
+            text = "המשך לאישור"
+            isAllCaps = false
+            setOnClickListener { startActivityForResult(intent, VPN_REQUEST) }
+        }, LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(10) })
+        guide.addView(TextView(this).apply {
+            text = "אפשר לחזור ולנווט בין המסכים בכל שלב."
+            textSize = 12f
+            setTextColor(Color.rgb(120, 110, 140))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) })
+        content.addView(guide, LinearLayout.LayoutParams(-1, -2))
     }
 
     private fun startProtection() {
@@ -865,7 +926,11 @@ class MainActivity : Activity() {
             }.show()
     }
 
-    private fun setPin() {\n        showPasswordSelection()\n    }\n\n    private fun askForNewCode(mode: String) {
+    private fun setPin() {
+        showPasswordSelection()
+    }
+
+    private fun askForNewCode(mode: String) {
         content.removeAllViews()
         content.setPadding(dp(10), dp(8), dp(10), dp(12))
 
