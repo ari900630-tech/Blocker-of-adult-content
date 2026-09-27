@@ -76,5 +76,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "v1.0.${{ github.run_number }}" app-latest.apk \
-            --title "מגן התוכן ${{ github.run_number }}" \
+            --title "מגן + ${{ github.run_number }}" \
             --generate-notes
