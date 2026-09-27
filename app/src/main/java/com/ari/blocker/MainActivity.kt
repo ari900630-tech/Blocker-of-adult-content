@@ -21,6 +21,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.graphics.drawable.GradientDrawable
@@ -105,10 +106,12 @@ class MainActivity : Activity() {
                     }
                     selectedNav = index
                     refreshNavSelection()
-                    when (index) {
-                        0 -> showHome()
-                        1 -> showAppControl()
-                        2 -> showSettings()
+                    root.post {
+                        when (index) {
+                            0 -> showHome()
+                            1 -> showAppControl()
+                            2 -> showSettings()
+                        }
                     }
                 }
             }, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
@@ -406,50 +409,143 @@ class MainActivity : Activity() {
         content.removeAllViews()
         content.setPadding(dp(14), dp(6), dp(14), dp(12))
 
-        val header=LinearLayout(this).apply{
-            orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL
-            setPadding(dp(14),dp(10),dp(14),dp(10)); background=rounded(Color.argb(150,255,255,255),22)
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = rounded(Color.argb(150, 255, 255, 255), 22)
         }
-        header.addView(TextView(this).apply{text="📱";textSize=28f;gravity=Gravity.CENTER},LinearLayout.LayoutParams(dp(46),dp(50)))
-        header.addView(TextView(this).apply{
-            text="האפליקציות שלי";textSize=22f;typeface=Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL
-        },LinearLayout.LayoutParams(0,dp(50),1f))
-        content.addView(header,LinearLayout.LayoutParams(-1,dp(70)).apply{bottomMargin=dp(10)})
+        header.addView(TextView(this).apply {
+            text = "📱"
+            textSize = 28f
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(dp(46), dp(50)))
+        val titleBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        titleBox.addView(TextView(this).apply {
+            text = "האפליקציות שלי"
+            textSize = 22f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+        }, LinearLayout.LayoutParams(-1, dp(32)))
+        titleBox.addView(TextView(this).apply {
+            text = "טוען אפליקציות..."
+            textSize = 13f
+            setTextColor(Color.rgb(239, 236, 255))
+        }, LinearLayout.LayoutParams(-1, dp(22)))
+        header.addView(titleBox, LinearLayout.LayoutParams(0, dp(54), 1f))
+        content.addView(header, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
 
-        val apps=getLauncherApps()
-        val list=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
-        apps.forEach { app ->
-            val pkg=app.activityInfo.packageName
-            val label=runCatching{app.activityInfo.loadLabel(packageManager).toString()}.getOrDefault(pkg)
-            val icon=runCatching{app.activityInfo.loadIcon(packageManager)}.getOrNull()
-            val locked=getSharedPreferences("app_control",MODE_PRIVATE).getStringSet("blocked_apps",emptySet())?.contains(pkg)==true
-            val row=LinearLayout(this).apply{
-                orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL
-                setPadding(dp(10),dp(5),dp(10),dp(5));background=rounded(Color.argb(245,255,255,255),20)
-            }
-            if(icon!=null) row.addView(android.widget.ImageView(this).apply{setImageDrawable(icon);scaleType=android.widget.ImageView.ScaleType.CENTER_INSIDE},
-                LinearLayout.LayoutParams(dp(52),dp(52)).apply{leftMargin=dp(6);rightMargin=dp(8)})
-            row.addView(TextView(this).apply{
-                text=label;textSize=16f;typeface=Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(63,45,115));gravity=Gravity.CENTER_VERTICAL
-            },LinearLayout.LayoutParams(0,dp(62),1f))
-            val appSwitch = android.widget.Switch(this).apply{
-                isChecked=locked;scaleX=1.08f;scaleY=1.08f
-                contentDescription = "נעילת $label"
-                setOnCheckedChangeListener { _,checked ->
-                    val s=getSharedPreferences("app_control",MODE_PRIVATE).getStringSet("blocked_apps",emptySet())?.toMutableSet() ?: mutableSetOf()
-                    if(checked)s.add(pkg) else s.remove(pkg)
-                    getSharedPreferences("app_control",MODE_PRIVATE).edit().putStringSet("blocked_apps",s).apply()
-                    row.background=rounded(if(checked)Color.rgb(226,255,245) else Color.argb(245,255,255,255),20)
-                }
-            }
-            row.addView(appSwitch,LinearLayout.LayoutParams(dp(62),dp(58)))
-            row.setOnClickListener { appSwitch.performClick() }
-            list.addView(row,LinearLayout.LayoutParams(-1,dp(72)).apply{bottomMargin=dp(8)})
+        val loading = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(35), dp(10), dp(35))
         }
-        val scroll=ScrollView(this).apply{addView(list)}
-        content.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+        loading.addView(ProgressBar(this).apply { isIndeterminate = true },
+            LinearLayout.LayoutParams(dp(54), dp(54)).apply { gravity = Gravity.CENTER })
+        loading.addView(TextView(this).apply {
+            text = "טוען אפליקציות..."
+            textSize = 16f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, 0)
+        }, LinearLayout.LayoutParams(-1, dp(42)))
+        content.addView(loading, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        content.post {
+            Thread {
+                val apps = getLauncherApps()
+                runOnUiThread {
+                    if (selectedNav != 1 || isFinishing) return@runOnUiThread
+
+                    content.removeAllViews()
+                    content.setPadding(dp(14), dp(6), dp(14), dp(12))
+                    val finalHeader = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        setPadding(dp(14), dp(10), dp(14), dp(10))
+                        background = rounded(Color.argb(150, 255, 255, 255), 22)
+                    }
+                    finalHeader.addView(TextView(this).apply {
+                        text = "📱"
+                        textSize = 28f
+                        gravity = Gravity.CENTER
+                    }, LinearLayout.LayoutParams(dp(46), dp(50)))
+                    finalHeader.addView(TextView(this).apply {
+                        text = "האפליקציות שלי"
+                        textSize = 22f
+                        typeface = Typeface.DEFAULT_BOLD
+                        setTextColor(Color.WHITE)
+                        gravity = Gravity.CENTER_VERTICAL
+                    }, LinearLayout.LayoutParams(0, dp(50), 1f))
+                    finalHeader.addView(TextView(this).apply {
+                        text = apps.size.toString() + " אפליקציות"
+                        textSize = 14f
+                        typeface = Typeface.DEFAULT_BOLD
+                        setTextColor(Color.WHITE)
+                        gravity = Gravity.CENTER
+                    }, LinearLayout.LayoutParams(dp(92), dp(50)))
+                    content.addView(finalHeader, LinearLayout.LayoutParams(-1, dp(70)).apply { bottomMargin = dp(10) })
+
+                    val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                    val blockedPrefs = getSharedPreferences("app_control", MODE_PRIVATE)
+
+                    apps.forEach { app ->
+                        val pkg = app.activityInfo.packageName
+                        val label = runCatching { app.activityInfo.loadLabel(packageManager).toString() }.getOrDefault(pkg)
+                        val icon = runCatching { app.activityInfo.loadIcon(packageManager) }.getOrNull()
+                        val locked = blockedPrefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
+                        val row = LinearLayout(this).apply {
+                            orientation = LinearLayout.HORIZONTAL
+                            gravity = Gravity.CENTER_VERTICAL
+                            setPadding(dp(10), dp(5), dp(10), dp(5))
+                            background = rounded(if (locked) Color.rgb(226,255,245) else Color.argb(245,255,255,255), 20)
+                        }
+                        if (icon != null) row.addView(android.widget.ImageView(this).apply {
+                            setImageDrawable(icon)
+                            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+                        }, LinearLayout.LayoutParams(dp(52), dp(52)).apply {
+                            leftMargin = dp(6); rightMargin = dp(8)
+                        })
+                        row.addView(TextView(this).apply {
+                            text = label
+                            textSize = 16f
+                            typeface = Typeface.DEFAULT_BOLD
+                            setTextColor(Color.rgb(63,45,115))
+                            gravity = Gravity.CENTER_VERTICAL
+                        }, LinearLayout.LayoutParams(0, dp(62), 1f))
+                        val appSwitch = android.widget.Switch(this).apply {
+                            isChecked = locked
+                            scaleX = 1.08f
+                            scaleY = 1.08f
+                            contentDescription = "נעילת " + label
+                            setOnCheckedChangeListener { _, checked ->
+                                val set = blockedPrefs.getStringSet("blocked_apps", emptySet())?.toMutableSet() ?: mutableSetOf()
+                                if (checked) set.add(pkg) else set.remove(pkg)
+                                blockedPrefs.edit().putStringSet("blocked_apps", set).apply()
+                                row.background = rounded(if (checked) Color.rgb(226,255,245) else Color.argb(245,255,255,255), 20)
+                            }
+                        }
+                        row.addView(appSwitch, LinearLayout.LayoutParams(dp(62), dp(58)))
+                        row.setOnClickListener { appSwitch.performClick() }
+                        list.addView(row, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
+                    }
+
+                    if (apps.isEmpty()) list.addView(TextView(this).apply {
+                        text = "לא נמצאו אפליקציות עם סמל במסך הבית."
+                        textSize = 16f
+                        setTextColor(Color.WHITE)
+                        gravity = Gravity.CENTER
+                        setPadding(dp(10), dp(35), dp(10), dp(35))
+                    }, LinearLayout.LayoutParams(-1, dp(90)))
+
+                    content.addView(ScrollView(this).apply { addView(list) }, LinearLayout.LayoutParams(-1, 0, 1f))
+                }
+            }.start()
+        }
     }
 
     private fun getLauncherApps(): List<android.content.pm.ResolveInfo> {
@@ -654,7 +750,19 @@ class MainActivity : Activity() {
         status.setTextColor(Color.rgb(21, 101, 192))
         val intent = VpnService.prepare(this)
         if (intent != null) {
-            startActivityForResult(intent, VPN_REQUEST)
+            AlertDialog.Builder(this)
+                .setTitle("הפעלת הגנה")
+                .setMessage("Android צריך אישור חד־פעמי לחיבור ההגנה. לאחר האישור תחזור אוטומטית ל־מגן +.")
+                .setPositiveButton("המשך", null)
+                .setNegativeButton("ביטול", null)
+                .create().also { dialog ->
+                    dialog.setOnShowListener {
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                            dialog.dismiss()
+                            startActivityForResult(intent, VPN_REQUEST)
+                        }
+                    }
+                }.show()
         } else {
             startProtection()
             showHome()
