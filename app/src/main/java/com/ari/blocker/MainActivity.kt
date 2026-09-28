@@ -770,8 +770,8 @@ class MainActivity : Activity() {
         val isAdmin = dpm.isAdminActive(admin)
 
         if (isOwner) {
-            addButton("✓ מניעת הסרת מגן + פעילה", Color.rgb(46,125,50), selected = true) {
-                BlockerDeviceAdminReceiver.enforceUninstallBlocked(this)
+            addButton("✓ הגנת הסרה פעילה", Color.rgb(46,125,50), selected = true) {
+                BlockerDeviceAdminReceiver.enforceProtection(this)
                 showMessage("מגן + מוגדרת כמנהלת המכשיר ולכן חסימת ההסרה פעילה.")
             }
         } else if (isAdmin) {
@@ -779,7 +779,7 @@ class MainActivity : Activity() {
                 showMessage("הגנת ההסרה פעילה. כל עוד מנהל המכשיר פעיל, Android מגן על מגן + מפני הסרה רגילה. הגנה שאינה ניתנת לביטול דורשת Device Owner או Profile Owner.")
             }
         } else {
-            addButton("מניעת הסרת מגן +", Color.rgb(125,96,226)) {
+            addButton("ניהול הסרה / השבתה", Color.rgb(125,96,226)) {
                 val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                     putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
                     putExtra(
@@ -1271,6 +1271,8 @@ class MainActivity : Activity() {
                 else {
                     dialog.dismiss()
                     if (BlockerVpnService.isProtectionActive) stopProtection()
+                    // Uninstall is available only after explicit in-app authentication.
+                    BlockerDeviceAdminReceiver.releaseProtectionForUninstall(this)
                     startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
                 }
             }
