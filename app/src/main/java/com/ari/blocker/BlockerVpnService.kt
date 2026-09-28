@@ -85,7 +85,7 @@ class BlockerVpnService : VpnService() {
 
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("מגן + פעיל")
-            .setContentText("סינון DNS פועל")
+            .setContentText("סינון פעיל")
             .setSmallIcon(R.drawable.ic_blocker_shield)
             .setContentIntent(openIntent)
             .setOngoing(true)
