@@ -85,17 +85,21 @@ class MainActivity : Activity() {
             Triple("⌂", "ראשי", 0),
             Triple("▦", "אפליקציות", 1),
             Triple("⚙", "הגדרות", 2),
-            Triple("🔐", "בחירת הסיסמה", 3)
+            Triple("", "בחירת הסיסמה", 3)
         )
         navItems.forEach { (symbol, label, index) ->
             bottomNav.addView(TextView(this).apply {
                 navButtons.add(this)
-                text = "$symbol\n$label"
+                text = if (index == 3) label else "$symbol\n$label"
                 textSize = 11f
                 gravity = Gravity.CENTER
                 setTextColor(Color.rgb(58, 37, 104))
                 contentDescription = label
                 background = navButtonBackground()
+                if (index == 3) {
+                    setCompoundDrawablesWithIntrinsicBounds(null, getDrawable(android.R.drawable.ic_lock_lock), null, null)
+                    compoundDrawablePadding = dp(2)
+                }
                 setOnClickListener {
                     if (!unlocked && prefs.getString("pin_hash", null) != null) {
                         showLockScreen()
@@ -722,11 +726,14 @@ class MainActivity : Activity() {
         cards.addView(settingsSection("🙈","סמל האפליקציה", if (iconVisible) "לחץ כדי להסתיר" else "לחץ כדי להחזיר") { toggleLauncherIcon() })
         cards.addView(settingsSection("↻","עדכון","התקן את הגרסה האחרונה"){AppUpdater.downloadAndInstall(this)})
         cards.addView(settingsSection("🌐","הגנת גלישה","הגדרות VPN"){startActivity(Intent(Settings.ACTION_VPN_SETTINGS))})
+        val overlayGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
+        cards.addView(settingsSection("▣","מעל אפליקציות אחרות",
+            if (overlayGranted) "מאושר" else "נדרש אישור") { requestOverlayPermission() })
         cards.addView(settingsSection("⏸","כיבוי ההגנה","כיבוי ההגנה"){
             if(BlockerVpnService.isProtectionActive) requestStopProtection() else showMessage("ההגנה כבר כבויה.")
         })
         content.addView(cards)
-        // Device-removal status is intentionally hidden from the settings UI.
+        // Device-admin/removal controls stay out of the settings UI.
     }
 
     private fun settingsSection(icon:String,title:String,subtitle:String,action:()->Unit):LinearLayout{
@@ -884,6 +891,12 @@ class MainActivity : Activity() {
     }
 
     private fun requestVpnPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            showMessage("כדי שמסך הקוד יוכל להופיע מעל האפליקציה החסומה, יש לאשר את ההרשאה „מעל אפליקציות אחרות”.")
+            requestOverlayPermission()
+            return
+        }
+
         val intent = VpnService.prepare(this)
         if (intent == null) {
             startProtection()
@@ -894,6 +907,22 @@ class MainActivity : Activity() {
         // Launch Android's VPN approval screen immediately.
         // No intermediate in-app confirmation screen.
         startActivityForResult(intent, VPN_REQUEST)
+    }
+
+    private fun requestOverlayPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            showMessage("הרשאת „מעל אפליקציות אחרות” אינה נדרשת בגרסת Android הזו.")
+            return
+        }
+        if (Settings.canDrawOverlays(this)) {
+            showMessage("הרשאת „מעל אפליקציות אחרות” כבר מאושרת.")
+            return
+        }
+        try {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+        } catch (_: Exception) {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+        }
     }
 
     private fun startProtection() {
