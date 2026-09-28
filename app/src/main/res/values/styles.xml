@@ -1,7 +1,9 @@
 <resources>
     <style name="Theme.Blocker" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowNoTitle">true</item>
         <item name="android:statusBarColor">@color/blocker_bg</item>
         <item name="android:navigationBarColor">@color/blocker_bg</item>
         <item name="android:colorAccent">@color/blocker_blue</item>
