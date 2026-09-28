@@ -70,7 +70,8 @@ class MainActivity : Activity() {
         }
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(8), dp(18), dp(18))
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            setPadding(dp(18), dp(6), dp(18), dp(12))
         }
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -437,7 +438,7 @@ class MainActivity : Activity() {
     private fun showAppControl() {
         showNav()
         content.removeAllViews()
-        content.setPadding(dp(10), dp(4), dp(10), dp(8))
+        content.setPadding(dp(10), dp(2), dp(10), dp(8))
 
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -448,6 +449,7 @@ class MainActivity : Activity() {
         header.addView(TextView(this).apply {
             text = "📱"
             textSize = 24f
+            setTextColor(Color.rgb(72, 50, 130))
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(dp(38), dp(48)))
         val titleBox = LinearLayout(this).apply {
@@ -458,12 +460,12 @@ class MainActivity : Activity() {
             text = "האפליקציות שלי"
             textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
+            setTextColor(Color.rgb(72, 50, 130))
         }, LinearLayout.LayoutParams(-1, dp(27)))
         titleBox.addView(TextView(this).apply {
             text = "טוען..."
             textSize = 12f
-            setTextColor(Color.rgb(239, 236, 255))
+            setTextColor(Color.rgb(120, 105, 160))
         }, LinearLayout.LayoutParams(-1, dp(20)))
         header.addView(titleBox, LinearLayout.LayoutParams(0, dp(48), 1f))
         content.addView(header, LinearLayout.LayoutParams(-1, dp(60)).apply { bottomMargin = dp(6) })
@@ -497,25 +499,26 @@ class MainActivity : Activity() {
                         orientation = LinearLayout.HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
                         setPadding(dp(10), dp(6), dp(10), dp(6))
-                        background = rounded(Color.argb(150, 255, 255, 255), 20)
+                        background = rounded(Color.WHITE, 20)
                     }
                     finalHeader.addView(TextView(this).apply {
                         text = "📱"
                         textSize = 24f
+                        setTextColor(Color.rgb(72, 50, 130))
                         gravity = Gravity.CENTER
                     }, LinearLayout.LayoutParams(dp(38), dp(46)))
                     finalHeader.addView(TextView(this).apply {
                         text = "האפליקציות שלי"
                         textSize = 19f
                         typeface = Typeface.DEFAULT_BOLD
-                        setTextColor(Color.WHITE)
+                        setTextColor(Color.rgb(72, 50, 130))
                         gravity = Gravity.CENTER_VERTICAL
                     }, LinearLayout.LayoutParams(0, dp(46), 1f))
                     finalHeader.addView(TextView(this).apply {
                         text = apps.size.toString() + " אפליקציות"
                         textSize = 12f
                         typeface = Typeface.DEFAULT_BOLD
-                        setTextColor(Color.WHITE)
+                        setTextColor(Color.rgb(100, 82, 145))
                         gravity = Gravity.CENTER
                     }, LinearLayout.LayoutParams(dp(82), dp(46)))
                     content.addView(finalHeader, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(6) })
@@ -591,10 +594,8 @@ class MainActivity : Activity() {
                         setPadding(dp(8), dp(25), dp(8), dp(25))
                     }, LinearLayout.LayoutParams(-1, dp(80)))
 
-                    content.addView(ScrollView(this).apply {
-                        isFillViewport = true
-                        addView(list)
-                    }, LinearLayout.LayoutParams(-1, 0, 1f))
+                    // Use the screen's main ScrollView; avoid a nested ScrollView.
+                    content.addView(list, LinearLayout.LayoutParams(-1, -2))
                 }
             }.start()
         }
@@ -689,7 +690,7 @@ class MainActivity : Activity() {
     private fun showPasswordSelection() {
         showNav()
         content.removeAllViews()
-        content.setPadding(dp(12), dp(4), dp(12), dp(8))
+        content.setPadding(dp(12), dp(2), dp(12), dp(8))
         addCardTitle("🔐 בחירת הסיסמה")
 
         val modes = listOf(
@@ -926,7 +927,7 @@ class MainActivity : Activity() {
 
     private fun askForNewCode(mode: String) {
         content.removeAllViews()
-        content.setPadding(dp(10), dp(8), dp(10), dp(12))
+        content.setPadding(dp(10), dp(2), dp(10), dp(8))
 
         val oldHash = prefs.getString("pin_hash", null)
 
@@ -939,7 +940,7 @@ class MainActivity : Activity() {
         val screen = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(22), dp(22), dp(22), dp(20))
+            setPadding(dp(18), dp(12), dp(18), dp(12))
             background = rounded(screenColor, 30)
         }
 
@@ -1012,8 +1013,8 @@ class MainActivity : Activity() {
                                     else -> if (input.text.length < 4) input.append(key)
                                 }
                             }
-                        }, LinearLayout.LayoutParams(dp(64), dp(54)).apply {
-                            leftMargin = dp(5); rightMargin = dp(5); topMargin = dp(3); bottomMargin = dp(3)
+                        }, LinearLayout.LayoutParams(dp(64), dp(50)).apply {
+                            leftMargin = dp(5); rightMargin = dp(5); topMargin = dp(2); bottomMargin = dp(2)
                         })
                     }
                     screen.addView(row)
@@ -1034,7 +1035,7 @@ class MainActivity : Activity() {
                 }
                 var chosen: List<Int>? = null
                 pattern.onPatternComplete = { value -> chosen = value }
-                screen.addView(pattern, LinearLayout.LayoutParams(-1, dp(315)))
+                screen.addView(pattern, LinearLayout.LayoutParams(-1, dp(280)))
 
                 val actions = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
