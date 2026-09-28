@@ -28,10 +28,11 @@ class AppBlockAccessibilityService : AccessibilityService() {
         val isProtectedBrowser = PROTECTED_BROWSER_PACKAGES.contains(pkg)
         val controlPrefs = getSharedPreferences("app_control", MODE_PRIVATE)
         val blockedByUser = controlPrefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
+        val requireCodeForBlockedApps = getSharedPreferences("settings", MODE_PRIVATE).getBoolean("require_code_for_blocked_apps", true)
         val now = System.currentTimeMillis()
         val persistedUnlockUntil = controlPrefs.getLong("unlock_until_$pkg", 0L)
 
-        if (!isProtectedBrowser && !blockedByUser) {
+        if (!isProtectedBrowser && (!blockedByUser || !requireCodeForBlockedApps)) {
             unlockedPackage = null
             return
         }
