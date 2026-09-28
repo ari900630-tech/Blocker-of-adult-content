@@ -39,6 +39,8 @@ class MainActivity : Activity() {
     private var unlocked = false
     private val navButtons = mutableListOf<TextView>()
     private lateinit var bottomNav: LinearLayout
+    private lateinit var mainScroll: ScrollView
+    private var hasStartedOnce = false
     private var selectedNav = 0
     private var swipeDownX = 0f
     private var swipeDownY = 0f
@@ -67,6 +69,7 @@ class MainActivity : Activity() {
             isFillViewport = true
             clipToPadding = false
         }
+        mainScroll = scroll
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
@@ -84,7 +87,7 @@ class MainActivity : Activity() {
             Triple("⌂\nראשי", "", 0),
             Triple("▦\nאפליקציות", "", 1),
             Triple("⚙\nהגדרות", "", 2),
-            Triple("קוד\nסיסמה", "", 3)
+            Triple("⌨\nקוד", "", 3)
         )
         navItems.forEach { (labelText, unused, index) ->
             bottomNav.addView(TextView(this).apply {
@@ -192,23 +195,25 @@ class MainActivity : Activity() {
         showNav()
         unlocked = false
         content.removeAllViews()
-        content.setPadding(dp(18), dp(12), dp(18), dp(18))
+        content.setPadding(dp(10), dp(4), dp(10), dp(6))
+        content.gravity = Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
+        mainScroll.isFillViewport = true
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(22), dp(22), dp(22), dp(20))
+            setPadding(dp(16), dp(8), dp(16), dp(8))
             background = rounded(Color.rgb(8, 67, 151), 30)
         }
         card.addView(TextView(this).apply { text="🛡️🔒"; textSize=46f; gravity=Gravity.CENTER },
-            LinearLayout.LayoutParams(-1, dp(62)))
+            LinearLayout.LayoutParams(-1, dp(48)))
         card.addView(TextView(this).apply {
             text="פתח את מגן +"; textSize=23f; typeface=Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE); gravity=Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(40)))
+        }, LinearLayout.LayoutParams(-1, dp(34)))
         card.addView(TextView(this).apply {
             text="הזן את הקוד"; textSize=15f; setTextColor(Color.rgb(241,238,255)); gravity=Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(30)))
+        }, LinearLayout.LayoutParams(-1, dp(26)))
 
         val mode = prefs.getString("auth_mode", "PIN4")
         if (mode == "PIN4") {
@@ -221,7 +226,7 @@ class MainActivity : Activity() {
                 setHintTextColor(Color.argb(180,255,255,255))
                 hint = "—  —  —  —"
             }
-            card.addView(input, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin=dp(8) })
+            card.addView(input, LinearLayout.LayoutParams(-1, dp(38)).apply { bottomMargin=dp(2) })
             val keys = arrayOf(arrayOf("1","2","3"),arrayOf("4","5","6"),arrayOf("7","8","9"),arrayOf("","0","⌫"))
             keys.forEach { rowValues ->
                 val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER }
@@ -237,7 +242,7 @@ class MainActivity : Activity() {
                             }
                         }
                     }
-                    row.addView(b, LinearLayout.LayoutParams(dp(62),dp(52)).apply { leftMargin=dp(5);rightMargin=dp(5);topMargin=dp(4);bottomMargin=dp(4) })
+                    row.addView(b, LinearLayout.LayoutParams(dp(56),dp(42)).apply { leftMargin=dp(3);rightMargin=dp(3);topMargin=dp(1);bottomMargin=dp(1) })
                 }
                 card.addView(row)
             }
@@ -1179,6 +1184,8 @@ class MainActivity : Activity() {
         }
 
         content.addView(screen, LinearLayout.LayoutParams(-1, -2))
+        mainScroll.isFillViewport = true
+        content.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
     }
 
     private fun addPasswordActionButtons(
@@ -1326,11 +1333,22 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (hasStartedOnce && prefs.getString("pin_hash", null) != null && !unlocked) {
+            showEntryScreen()
+        }
+        if (!hasStartedOnce) hasStartedOnce = true
         if (unlocked) {
             when (selectedNav) {
                 0 -> showHome()
                 2 -> showSettings()
             }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations && prefs.getString("pin_hash", null) != null) {
+            unlocked = false
         }
     }
 
