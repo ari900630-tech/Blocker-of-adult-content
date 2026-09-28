@@ -82,24 +82,21 @@ class MainActivity : Activity() {
             background = rounded(Color.argb(245, 255, 255, 255), 20)
         }
         val navItems = listOf(
-            Triple("⌂", "ראשי", 0),
-            Triple("▦", "אפליקציות", 1),
-            Triple("⚙", "הגדרות", 2),
-            Triple("", "בחירת הסיסמה", 3)
+            Triple("⌂\nראשי", "", 0),
+            Triple("▦\nאפליקציות", "", 1),
+            Triple("⚙\nהגדרות", "", 2),
+            Triple("קוד\nסיסמה", "", 3)
         )
-        navItems.forEach { (symbol, label, index) ->
+        navItems.forEach { (labelText, unused, index) ->
             bottomNav.addView(TextView(this).apply {
                 navButtons.add(this)
-                text = if (index == 3) label else "$symbol\n$label"
+                text = labelText
                 textSize = 11f
                 gravity = Gravity.CENTER
+                includeFontPadding = false
                 setTextColor(Color.rgb(58, 37, 104))
-                contentDescription = label
+                contentDescription = labelText.replace("\n", " ")
                 background = navButtonBackground()
-                if (index == 3) {
-                    setCompoundDrawablesWithIntrinsicBounds(null, getDrawable(android.R.drawable.ic_lock_lock), null, null)
-                    compoundDrawablePadding = dp(2)
-                }
                 setOnClickListener {
                     if (!unlocked && prefs.getString("pin_hash", null) != null) {
                         showLockScreen()
@@ -116,8 +113,8 @@ class MainActivity : Activity() {
                         }
                     }
                 }
-            }, LinearLayout.LayoutParams(0, dp(48), 1f).apply {
-                leftMargin = dp(4); rightMargin = dp(4)
+            }, LinearLayout.LayoutParams(0, dp(58), 1f).apply {
+                leftMargin = dp(3); rightMargin = dp(3)
             })
         }
         root.addView(bottomNav, LinearLayout.LayoutParams(-1, dp(58)))
@@ -732,6 +729,7 @@ class MainActivity : Activity() {
         val overlayGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
         cards.addView(settingsSection("▣","מעל אפליקציות אחרות",
             if (overlayGranted) "מאושר" else "נדרש אישור") { requestOverlayPermission() })
+        addDeviceManagementControls()
         cards.addView(settingsSection("⏸","כיבוי ההגנה","כיבוי ההגנה"){
             if(BlockerVpnService.isProtectionActive) requestStopProtection() else showMessage("ההגנה כבר כבויה.")
         })
@@ -758,21 +756,35 @@ class MainActivity : Activity() {
     private fun addDeviceManagementControls() {
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val isOwner = dpm.isDeviceOwnerApp(packageName) || dpm.isProfileOwnerApp(packageName)
+        val isAdmin = dpm.isAdminActive(BlockerDeviceAdminReceiver.component(this))
+
         if (isOwner) {
+            cardsPlaceholder()
             addButton("✓ הגנת הסרה פעילה", Color.rgb(46,125,50), selected = true) {
                 BlockerDeviceAdminReceiver.enforceUninstallBlocked(this)
-                showMessage("הגנת ההסרה מופעלת.")
+                showMessage("הגנת ההסרה פעילה.")
             }
         } else {
-            addButton("🔐 הפעל הרשאת מנהל המכשיר", Color.rgb(55,78,102)) {
-                val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                    putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, BlockerDeviceAdminReceiver.component(this@MainActivity))
-                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "הרשאה זו מאפשרת למגן + להשתלב במצב ניהול המכשיר. חסימת הסרה מתוך הגדרות תעבוד רק לאחר שהמכשיר הוגדר כ-Device Owner/Profile Owner.")
-                }
-                startActivity(intent)
+            val subtitle = if (isAdmin) {
+                "מנהל המכשיר מאושר. חסימת הסרה מלאה דורשת ניהול מכשיר."
+            } else {
+                "נדרש אישור כדי להפעיל את הגנת ההסרה."
             }
+            content.addView(settingsSection("▣", "הגנת הסרת האפליקציה", subtitle) {
+                if (!isAdmin) {
+                    val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                        putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, BlockerDeviceAdminReceiver.component(this@MainActivity))
+                        putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "אישור זה מאפשר למגן + להשתמש בהרשאות ניהול המכשיר. הגנת הסרה מלאה זמינה כאשר האפליקציה מוגדרת כבעלת המכשיר או הפרופיל.")
+                    }
+                    startActivity(intent)
+                } else {
+                    showMessage("הרשאת מנהל המכשיר כבר מאושרת. במכשיר רגיל Android עדיין עשוי לאפשר הסרה לאחר ביטול הרשאת הניהול.")
+                }
+            })
         }
     }
+
+    private fun cardsPlaceholder() { }
 
     private fun addCardTitle(text: String) {
         content.addView(TextView(this).apply {
