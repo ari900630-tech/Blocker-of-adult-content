@@ -144,42 +144,41 @@ class MainActivity : Activity() {
     }
 
     private fun showEntryScreen() {
-        showNav()
+        bottomNav.visibility = View.GONE
         unlocked = false
         content.removeAllViews()
-        content.setPadding(dp(18), dp(18), dp(18), dp(18))
+        content.setPadding(0, 0, 0, 0)
 
         val entry = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(24), dp(26), dp(24), dp(26))
-            background = rounded(Color.argb(245, 255, 255, 255), 32)
+            background = rounded(Color.rgb(91, 62, 160), 32)
             scaleX = 0.72f
             scaleY = 0.72f
             alpha = 0f
         }
-        entry.addView(TextView(this).apply {
-            text = "🔒"
-            textSize = 58f
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(80)))
-        entry.addView(TextView(this).apply {
-            text = "מגן +"
-            textSize = 28f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(91, 62, 160))
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(48)))
-        content.addView(entry, LinearLayout.LayoutParams(-1, dp(190)).apply {
-            gravity = Gravity.CENTER
-        })
+        entry.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_blocker_shield)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+        }, LinearLayout.LayoutParams(-1, dp(120)))
 
-        entry.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(380).withEndAction {
-            entry.animate().scaleX(1.04f).scaleY(1.04f).setDuration(120).withEndAction {
-                entry.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
-            }.start()
-            window.decorView.postDelayed({ if (!isFinishing) showLockScreen() }, 420L)
-        }.start()
+        entry.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progress = 0
+            val animator = android.animation.ValueAnimator.ofInt(0, 100)
+            animator.duration = 900L
+            animator.addUpdateListener { progress = it.animatedValue as Int }
+            animator.addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    if (!isFinishing) showLockScreen()
+                }
+            })
+            animator.start()
+        }, LinearLayout.LayoutParams(dp(190), dp(6)).apply { topMargin = dp(16) })
+        content.addView(entry, LinearLayout.LayoutParams(dp(250), dp(220)).apply { gravity = Gravity.CENTER })
+
+        entry.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(320).start()
     }
 
     private fun showLockScreen() {
@@ -390,8 +389,8 @@ class MainActivity : Activity() {
         val protectionSwitch = android.widget.Switch(this).apply {
             isChecked = active
             text = ""
-            scaleX = 1.18f
-            scaleY = 1.18f
+            scaleX = 1f
+            scaleY = 1f
             contentDescription = if (active) "כיבוי ההגנה" else "הפעלת ההגנה"
             setOnCheckedChangeListener { _, checked ->
                 if (checked) {
@@ -402,7 +401,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        row.addView(protectionSwitch, LinearLayout.LayoutParams(dp(66), dp(58)))
+        row.addView(protectionSwitch, LinearLayout.LayoutParams(dp(72), dp(58)).apply { leftMargin = dp(2); rightMargin = dp(2) })
         row.setOnClickListener {
             protectionSwitch.performClick()
         }
@@ -432,12 +431,7 @@ class MainActivity : Activity() {
     }
 
     private fun requestProtectedSearch() {
-        val pinHash = prefs.getString("pin_hash", null)
-        if (pinHash == null) { showMessage("כדי לפתוח חיפוש מוגן צריך להגדיר קוד גישה."); return }
-        val input = EditText(this).apply { hint = "קוד גישה"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD; imeOptions = EditorInfo.IME_ACTION_DONE; setSingleLine(true) }
-        val dialog = AlertDialog.Builder(this).setTitle("פתיחת חיפוש מוגן").setMessage("הזן את קוד הגישה כדי לפתוח את החיפוש המוגן.").setView(input).setPositiveButton("פתח", null).setNegativeButton("ביטול", null).create()
-        dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { if (hash(input.text.toString()) != pinHash) input.error = "קוד שגוי" else { dialog.dismiss(); openProtectedSearch() } } }
-        dialog.show()
+        openProtectedSearch()
     }
 
     private fun showAppControl() {
@@ -449,7 +443,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(10), dp(6), dp(10), dp(6))
-            background = rounded(Color.argb(150, 255, 255, 255), 20)
+            background = rounded(Color.WHITE, 20)
         }
         header.addView(TextView(this).apply {
             text = "📱"
@@ -563,7 +557,11 @@ class MainActivity : Activity() {
                             }
                         }
 
-                        // RTL: label is on the right, icon in the middle, switch on the left.
+                        // RTL: icon first, app name on the right, switch on the left.
+                        row.addView(appIcon, LinearLayout.LayoutParams(dp(48), dp(52)).apply {
+                            marginStart = dp(8)
+                            marginEnd = dp(8)
+                        })
                         row.addView(TextView(this).apply {
                             text = label
                             textSize = 16f
@@ -573,14 +571,9 @@ class MainActivity : Activity() {
                             maxLines = 1
                             ellipsize = android.text.TextUtils.TruncateAt.END
                         }, LinearLayout.LayoutParams(0, dp(52), 1f))
+                        row.addView(appSwitch, LinearLayout.LayoutParams(dp(64), dp(52)))
 
-                        row.addView(appIcon, LinearLayout.LayoutParams(dp(48), dp(52)).apply {
-                            marginStart = dp(8)
-                            marginEnd = dp(8)
-                        })
-                        row.addView(appSwitch, LinearLayout.LayoutParams(dp(58), dp(52)))
-
-                        // Require two taps on the app row before changing its lock state.
+                        // Require two taps on the whole app row before changing its lock state.
                         var lastTap = 0L
                         row.setOnClickListener {
                             val now = android.os.SystemClock.uptimeMillis()
@@ -729,6 +722,11 @@ class MainActivity : Activity() {
         addCardTitle("⚙️ הגדרות")
         val cards=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         cards.addView(settingsSection("🔐","בחירת הסיסמה","4 ספרות, מילים, פס החלקה או טביעת אצבע"){showPasswordSelection()})
+        val requireCode = prefs.getBoolean("require_code_for_blocked_apps", true)
+        cards.addView(settingsSection("🔒","קוד לאפליקציות חסומות", if (requireCode) "פעיל — נדרש קוד בכניסה" else "כבוי") {
+            prefs.edit().putBoolean("require_code_for_blocked_apps", !requireCode).apply()
+            showSettings()
+        })
         val iconVisible = isLauncherIconVisible()
         cards.addView(settingsSection("🙈","סמל האפליקציה", if (iconVisible) "לחץ כדי להסתיר" else "לחץ כדי להחזיר") { toggleLauncherIcon() })
         cards.addView(settingsSection("↻","עדכון","התקן את הגרסה האחרונה"){AppUpdater.downloadAndInstall(this)})
@@ -759,8 +757,6 @@ class MainActivity : Activity() {
     private fun addDeviceManagementControls() {
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val isOwner = dpm.isDeviceOwnerApp(packageName) || dpm.isProfileOwnerApp(packageName)
-        val text = if (isOwner) "🔒 הגנת הסרה פעילה" else "🔓 הגנת הסרה לא הופעלה"
-        addText(text)
         if (isOwner) {
             addButton("✓ הגנת הסרה פעילה", Color.rgb(46,125,50), selected = true) {
                 BlockerDeviceAdminReceiver.enforceUninstallBlocked(this)
@@ -1004,7 +1000,7 @@ class MainActivity : Activity() {
                 }
                 screen.addView(input, LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(6) })
 
-                val keys = arrayOf(arrayOf("1","2","3"), arrayOf("4","5","6"), arrayOf("7","8","9"), arrayOf("⌫","0",""))
+                val keys = arrayOf(arrayOf("1","2","3"), arrayOf("4","5","6"), arrayOf("7","8","9"), arrayOf("","0","⌫"))
                 keys.forEach { values ->
                     val row = LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL
