@@ -765,34 +765,32 @@ class MainActivity : Activity() {
 
     private fun addDeviceManagementControls() {
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = BlockerDeviceAdminReceiver.component(this)
         val isOwner = dpm.isDeviceOwnerApp(packageName) || dpm.isProfileOwnerApp(packageName)
-        val isAdmin = dpm.isAdminActive(BlockerDeviceAdminReceiver.component(this))
+        val isAdmin = dpm.isAdminActive(admin)
 
         if (isOwner) {
-            addButton("✓ הגנת הסרה פעילה", Color.rgb(46,125,50), selected = true) {
+            addButton("✓ מניעת הסרת מגן + פעילה", Color.rgb(46,125,50), selected = true) {
                 BlockerDeviceAdminReceiver.enforceUninstallBlocked(this)
-                showMessage("הגנת ההסרה פעילה.")
+                showMessage("מגן + מוגדרת כמנהלת המכשיר ולכן חסימת ההסרה פעילה.")
+            }
+        } else if (isAdmin) {
+            addButton("✓ מנהל המכשיר מאושר", Color.rgb(46,125,50), selected = true) {
+                showMessage("הרשאת מנהל המכשיר פעילה. כל עוד ההרשאה פעילה, Android מגן על האפליקציה מפני הסרה רגילה. חסימה מלאה של ביטול ההרשאה דורשת Device Owner/Profile Owner.")
             }
         } else {
-            val subtitle = if (isAdmin) {
-                "מנהל המכשיר מאושר. חסימת הסרה מלאה דורשת ניהול מכשיר."
-            } else {
-                "נדרש אישור כדי להפעיל את הגנת ההסרה."
-            }
-            content.addView(settingsSection("▣", "הגנת הסרת האפליקציה", subtitle) {
-                if (!isAdmin) {
-                    val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                        putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, BlockerDeviceAdminReceiver.component(this@MainActivity))
-                        putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "אישור זה מאפשר למגן + להשתמש בהרשאות ניהול המכשיר. הגנת הסרה מלאה זמינה כאשר האפליקציה מוגדרת כבעלת המכשיר או הפרופיל.")
-                    }
-                    startActivity(intent)
-                } else {
-                    showMessage("הרשאת מנהל המכשיר כבר מאושרת. במכשיר רגיל Android עדיין עשוי לאפשר הסרה לאחר ביטול הרשאת הניהול.")
+            addButton("מניעת הסרת מגן +", Color.rgb(125,96,226)) {
+                val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                    putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
+                    putExtra(
+                        DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                        "הפעלת מנהל המכשיר מגינה על מגן + מפני הסרה רגילה. לביטול מוחלט של אפשרות ההסרה נדרש Device Owner או Profile Owner."
+                    )
                 }
-            })
+                startActivity(intent)
+            }
         }
     }
-
 
     private fun addCardTitle(text: String) {
         content.addView(TextView(this).apply {
