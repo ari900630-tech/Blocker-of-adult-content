@@ -337,45 +337,35 @@ class MainActivity : Activity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            layoutDirection = LinearLayout.LAYOUT_DIRECTION_RTL
-            setPadding(dp(14), dp(8), dp(14), dp(8))
+            setPadding(dp(16), dp(8), dp(14), dp(8))
             background = rounded(Color.argb(245, 255, 255, 255), 25)
         }
-
-        val toggle = TextView(this).apply {
-            text = if (active) "✓" else "○"
-            textSize = 28f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            background = rounded(
-                if (active) Color.rgb(125, 96, 226) else Color.rgb(180, 170, 205),
-                100
-            )
-            contentDescription = if (active) "כיבוי ההגנה" else "הפעלת ההגנה"
-            setOnClickListener {
-                if (BlockerVpnService.isProtectionActive) {
-                    stopProtection()
-                } else {
-                    requestVpnPermission()
-                }
-            }
-        }
-
-        // Fixed on the right side; it never slides when its state changes.
-        row.addView(toggle, LinearLayout.LayoutParams(dp(58), dp(58)))
-
         row.addView(TextView(this).apply {
             text = if (active) "הגנה פעילה" else "הפעל הגנה"
             textSize = 17f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(91, 62, 160))
             gravity = Gravity.CENTER_VERTICAL
-        }, LinearLayout.LayoutParams(0, dp(64), 1f).apply {
-            marginEnd = dp(12)
-        })
-
-        row.setOnClickListener { toggle.performClick() }
+        }, LinearLayout.LayoutParams(0, dp(64), 1f))
+        val protectionSwitch = android.widget.Switch(this).apply {
+            isChecked = active
+            text = ""
+            scaleX = 1.18f
+            scaleY = 1.18f
+            contentDescription = if (active) "כיבוי ההגנה" else "הפעלת ההגנה"
+            setOnCheckedChangeListener { _, checked ->
+                if (checked) {
+                    requestVpnPermission()
+                } else {
+                    isChecked = true
+                    requestStopProtection()
+                }
+            }
+        }
+        row.addView(protectionSwitch, LinearLayout.LayoutParams(dp(66), dp(58)))
+        row.setOnClickListener {
+            protectionSwitch.performClick()
+        }
         return row
     }
 
