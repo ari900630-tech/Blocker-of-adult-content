@@ -32,6 +32,9 @@ jobs:
         with:
           gradle-version: "8.10"
 
+      - name: Apply setup screen patch
+        run: python3 scripts/apply_setup_ui_patch.py
+
       - name: Restore release signing key
         if: env.HAS_SIGNING_KEY != ''
         env:
