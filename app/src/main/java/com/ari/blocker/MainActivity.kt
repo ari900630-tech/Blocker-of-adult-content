@@ -1123,19 +1123,19 @@ class MainActivity : Activity() {
                     val current = screen.tag as? EditText
                     if (oldHash != null && (current == null || hash(current.text.toString()) != oldHash)) {
                         current?.error = "סיסמה נוכחית שגויה"
-                        return@setOnClickListener
+                    } else {
+                        val value = chosen
+                        if (value == null || value.size < 4) {
+                            showMessage("צייר לפחות 4 עיגולים.")
+                        } else {
+                            prefs.edit()
+                                .putString("pin_hash", hash("PATTERN:" + value.joinToString(",")))
+                                .putString("auth_mode", "PATTERN")
+                                .apply()
+                            unlocked = true
+                            showHome()
+                        }
                     }
-                    val value = chosen
-                    if (value == null || value.size < 4) {
-                        showMessage("צייר לפחות 4 עיגולים.")
-                        return@actionButton
-                    }
-                    prefs.edit()
-                        .putString("pin_hash", hash("PATTERN:" + value.joinToString(",")))
-                        .putString("auth_mode", "PATTERN")
-                        .apply()
-                    unlocked = true
-                    showHome()
                 }, LinearLayout.LayoutParams(0, dp(60), 1f).apply {
                     rightMargin = dp(5)
                 })
