@@ -503,10 +503,9 @@ class MainActivity : Activity() {
                             layoutDirection = LinearLayout.LAYOUT_DIRECTION_RTL
                             setPadding(dp(10), dp(7), dp(10), dp(7))
                             background = navButtonBackground()
-                            setOnClickListener { appSwitch.performClick() }
                         }
 
-                        row.addView(android.widget.Switch(this).apply {
+                        val appSwitch = android.widget.Switch(this).apply {
                             isChecked = locked
                             scaleX = 0.78f
                             scaleY = 0.78f
@@ -516,24 +515,9 @@ class MainActivity : Activity() {
                                 if (checked) set.add(pkg) else set.remove(pkg)
                                 blockedPrefs.edit().putStringSet("blocked_apps", set).apply()
                             }
-                        }, LinearLayout.LayoutParams(dp(58), dp(52)))
-
-                        if (icon != null) row.addView(ImageView(this).apply {
-                            setImageDrawable(icon)
-                            scaleType = ImageView.ScaleType.CENTER_INSIDE
-                        }, LinearLayout.LayoutParams(dp(48), dp(48)).apply {
-                            leftMargin = dp(8)
-                        })
-
-                        row.addView(TextView(this).apply {
-                            text = label
-                            textSize = 16f
-                            typeface = Typeface.DEFAULT_BOLD
-                            setTextColor(Color.rgb(63,45,115))
-                            gravity = Gravity.CENTER_VERTICAL
-                            maxLines = 1
-                            ellipsize = android.text.TextUtils.TruncateAt.END
-                        }, LinearLayout.LayoutParams(0, dp(52), 1f))
+                        }
+                        row.addView(appSwitch, LinearLayout.LayoutParams(dp(58), dp(52)))
+                        row.setOnClickListener { appSwitch.performClick() }
 
                         list.addView(row, LinearLayout.LayoutParams(-1, dp(66)).apply {
                             bottomMargin = dp(7)
