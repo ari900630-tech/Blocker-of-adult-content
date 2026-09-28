@@ -74,7 +74,7 @@ class BlockerVpnService : VpnService() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "מגן +", NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel(CHANNEL_ID, "סינון פעיל", NotificationManager.IMPORTANCE_LOW)
             )
         }
 
