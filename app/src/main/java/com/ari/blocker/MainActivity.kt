@@ -273,22 +273,28 @@ class MainActivity : Activity() {
         showNav()
         unlocked = false
         content.removeAllViews()
-        content.setPadding(dp(10), dp(4), dp(10), dp(6))
+        content.setPadding(dp(8), dp(8), dp(8), dp(10))
         content.gravity = Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
         mainScroll.isFillViewport = true
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setPadding(dp(18), dp(12), dp(18), dp(14))
             background = rounded(Color.rgb(8, 67, 151), 30)
         }
-        card.addView(TextView(this).apply { text="🛡️🔒"; textSize=46f; gravity=Gravity.CENTER },
-            LinearLayout.LayoutParams(-1, dp(48)))
+        card.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_blocker_shield)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            adjustViewBounds = true
+        }, LinearLayout.LayoutParams(dp(150), dp(118)).apply {
+            gravity = Gravity.CENTER
+            bottomMargin = dp(4)
+        })
         card.addView(TextView(this).apply {
             text="פתח את מגן +"; textSize=23f; typeface=Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE); gravity=Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(34)))
+        }, LinearLayout.LayoutParams(-1, dp(38)))
         card.addView(TextView(this).apply {
             text="הזן את הקוד"; textSize=15f; setTextColor(Color.rgb(241,238,255)); gravity=Gravity.CENTER
         }, LinearLayout.LayoutParams(-1, dp(26)))
@@ -304,7 +310,10 @@ class MainActivity : Activity() {
                 setHintTextColor(Color.argb(180,255,255,255))
                 hint = "—  —  —  —"
             }
-            card.addView(input, LinearLayout.LayoutParams(-1, dp(38)).apply { bottomMargin=dp(2) })
+            card.addView(input, LinearLayout.LayoutParams(-1, dp(48)).apply {
+                bottomMargin = dp(6)
+                gravity = Gravity.CENTER_HORIZONTAL
+            })
             val keys = arrayOf(arrayOf("1","2","3"),arrayOf("4","5","6"),arrayOf("7","8","9"),arrayOf("","0","⌫"))
             keys.forEach { rowValues ->
                 val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER }
@@ -320,7 +329,7 @@ class MainActivity : Activity() {
                             }
                         }
                     }
-                    row.addView(b, LinearLayout.LayoutParams(dp(56),dp(42)).apply { leftMargin=dp(3);rightMargin=dp(3);topMargin=dp(1);bottomMargin=dp(1) })
+                    row.addView(b, LinearLayout.LayoutParams(dp(58),dp(46)).apply { leftMargin=dp(3);rightMargin=dp(3);topMargin=dp(2);bottomMargin=dp(2) })
                 }
                 card.addView(row)
             }
