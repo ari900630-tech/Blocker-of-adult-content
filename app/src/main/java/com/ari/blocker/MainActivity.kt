@@ -1212,7 +1212,11 @@ class MainActivity : Activity() {
                                 .putString("auth_mode", "PATTERN")
                                 .apply()
                             unlocked = true
-                            showHome()
+                            if (setupFlowActive && !prefs.getBoolean("setup_complete", false)) {
+                                showSetup()
+                            } else {
+                                showHome()
+                            }
                         }
                     }
                 }, LinearLayout.LayoutParams(0, dp(60), 1f).apply {
