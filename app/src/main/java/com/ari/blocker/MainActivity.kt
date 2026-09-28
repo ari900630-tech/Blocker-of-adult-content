@@ -759,7 +759,6 @@ class MainActivity : Activity() {
         val isAdmin = dpm.isAdminActive(BlockerDeviceAdminReceiver.component(this))
 
         if (isOwner) {
-            cardsPlaceholder()
             addButton("✓ הגנת הסרה פעילה", Color.rgb(46,125,50), selected = true) {
                 BlockerDeviceAdminReceiver.enforceUninstallBlocked(this)
                 showMessage("הגנת ההסרה פעילה.")
@@ -784,7 +783,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun cardsPlaceholder() { }
 
     private fun addCardTitle(text: String) {
         content.addView(TextView(this).apply {
