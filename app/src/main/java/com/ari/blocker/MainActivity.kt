@@ -51,7 +51,7 @@ class MainActivity : Activity() {
             android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN
         )
         buildShell()
-        if (prefs.getString("pin_hash", null) != null) showLockScreen()
+        if (prefs.getString("pin_hash", null) != null) showEntryScreen()
         else showSetup()
         requestNotificationPermissionIfNeeded()
     }
@@ -135,11 +135,51 @@ class MainActivity : Activity() {
         showNav()
         unlocked = true
         content.removeAllViews()
-        addCardTitle("ברוכים הבאים")
-        addText("בפעם הראשונה יש להפעיל את ההגנה ולהגדיר דרך כניסה. לאחר מכן האפליקציה תוכל להגן על אתרים ואפליקציות שבחרת.")
-        addButton("1. הגדר קוד / ביומטריה", Color.rgb(125, 96, 226)) { setPin() }
-        addButton("2. הפעל הגנה", Color.rgb(125, 96, 226)) { requestVpnPermission() }
-        addButton("3. הגדר אפליקציות") { showAppControl() }
+        content.setPadding(dp(14), dp(10), dp(14), dp(14))
+
+        addCardTitle("הגדרת מגן +")
+        addButton("🔐 הגדרת סיסמה", Color.rgb(125, 96, 226)) { showPasswordSelection() }
+        addButton("🛡️ הפעלת ההגנה", Color.rgb(125, 96, 226)) { requestVpnPermission() }
+        addButton("📱 בחירת אפליקציות", Color.rgb(125, 96, 226)) { showAppControl() }
+    }
+
+    private fun showEntryScreen() {
+        showNav()
+        unlocked = false
+        content.removeAllViews()
+        content.setPadding(dp(18), dp(18), dp(18), dp(18))
+
+        val entry = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(24), dp(26), dp(24), dp(26))
+            background = rounded(Color.argb(245, 255, 255, 255), 32)
+            scaleX = 0.72f
+            scaleY = 0.72f
+            alpha = 0f
+        }
+        entry.addView(TextView(this).apply {
+            text = "🔒"
+            textSize = 58f
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(80)))
+        entry.addView(TextView(this).apply {
+            text = "מגן +"
+            textSize = 28f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(91, 62, 160))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(48)))
+        content.addView(entry, LinearLayout.LayoutParams(-1, dp(190)).apply {
+            gravity = Gravity.CENTER
+        })
+
+        entry.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(380).withEndAction {
+            entry.animate().scaleX(1.04f).scaleY(1.04f).setDuration(120).withEndAction {
+                entry.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+            }.start()
+            window.decorView.postDelayed({ if (!isFinishing) showLockScreen() }, 420L)
+        }.start()
     }
 
     private fun showLockScreen() {
@@ -292,7 +332,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(-1, dp(30)))
 
-        val active = BlockerVpnService.isProtectionActive
+        val active = BlockerVpnService.isProtectionActive || prefs.getBoolean("protection_enabled", false)
         hero.addView(addCuteProtectionSwitch(active), LinearLayout.LayoutParams(-1, dp(82)).apply {
             topMargin = dp(14)
             bottomMargin = dp(10)
@@ -505,11 +545,17 @@ class MainActivity : Activity() {
                             background = navButtonBackground()
                         }
 
+                        val appIcon = ImageView(this).apply {
+                            setImageDrawable(icon ?: getDrawable(android.R.drawable.sym_def_app_icon))
+                            scaleType = ImageView.ScaleType.CENTER_INSIDE
+                            contentDescription = label
+                        }
+
                         val appSwitch = android.widget.Switch(this).apply {
                             isChecked = locked
-                            scaleX = 0.78f
-                            scaleY = 0.78f
-                            contentDescription = "נעילת " + label
+                            scaleX = 0.82f
+                            scaleY = 0.82f
+                            contentDescription = "נעילת $label"
                             setOnCheckedChangeListener { _, checked ->
                                 val set = blockedPrefs.getStringSet("blocked_apps", emptySet())?.toMutableSet() ?: mutableSetOf()
                                 if (checked) set.add(pkg) else set.remove(pkg)
@@ -517,29 +563,37 @@ class MainActivity : Activity() {
                             }
                         }
 
-                        row.addView(appSwitch, LinearLayout.LayoutParams(dp(58), dp(52)))
-
-                        if (icon != null) {
-                            row.addView(ImageView(this).apply {
-                                setImageDrawable(icon)
-                                scaleType = ImageView.ScaleType.CENTER_INSIDE
-                            }, LinearLayout.LayoutParams(dp(48), dp(52)).apply {
-                                marginStart = dp(6)
-                                marginEnd = dp(6)
-                            })
-                        }
-
+                        // RTL: label is on the right, icon in the middle, switch on the left.
                         row.addView(TextView(this).apply {
                             text = label
                             textSize = 16f
                             typeface = Typeface.DEFAULT_BOLD
                             setTextColor(Color.rgb(45, 35, 70))
-                            gravity = Gravity.CENTER_VERTICAL
+                            gravity = Gravity.CENTER_VERTICAL or Gravity.RIGHT
                             maxLines = 1
                             ellipsize = android.text.TextUtils.TruncateAt.END
                         }, LinearLayout.LayoutParams(0, dp(52), 1f))
 
-                        row.setOnClickListener { appSwitch.performClick() }
+                        row.addView(appIcon, LinearLayout.LayoutParams(dp(48), dp(52)).apply {
+                            marginStart = dp(8)
+                            marginEnd = dp(8)
+                        })
+                        row.addView(appSwitch, LinearLayout.LayoutParams(dp(58), dp(52)))
+
+                        // Require two taps on the app row before changing its lock state.
+                        var lastTap = 0L
+                        row.setOnClickListener {
+                            val now = android.os.SystemClock.uptimeMillis()
+                            if (now - lastTap <= 450L) {
+                                appSwitch.performClick()
+                                lastTap = 0L
+                            } else {
+                                lastTap = now
+                                row.animate().scaleX(0.985f).scaleY(0.985f).setDuration(80).withEndAction {
+                                    row.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+                                }.start()
+                            }
+                        }
 
                         list.addView(row, LinearLayout.LayoutParams(-1, dp(66)).apply {
                             bottomMargin = dp(7)
@@ -654,17 +708,16 @@ class MainActivity : Activity() {
         content.removeAllViews()
         content.setPadding(dp(12), dp(4), dp(12), dp(8))
         addCardTitle("🔐 בחירת הסיסמה")
-        addText("בחר סוג סיסמה. המסך הבא יהיה מסך ההגדרה עצמו.")
 
         val modes = listOf(
             Triple("🔢", "4 ספרות", "קוד של 4 ספרות"),
-            Triple("🔤", "מספרים ומילים", "אורך חופשי"),
-            Triple("🔵", "פס החלקה", "9 עיגולים")
+            Triple("🔤", "מספרים ומילים", "סיסמה באורך חופשי"),
+            Triple("🔵", "פס החלקה", "תבנית עם 9 עיגולים"),
+            Triple("👆", "טביעת אצבע", "כניסה באמצעות ביומטריה")
         )
         modes.forEachIndexed { index, (icon, title, subtitle) ->
-            val card = settingsSection(icon, title, subtitle) {
-                askForNewCode(arrayOf("PIN4", "PASSWORD", "PATTERN")[index])
-            }
+            val mode = arrayOf("PIN4", "PASSWORD", "PATTERN", "BIOMETRIC")[index]
+            val card = settingsSection(icon, title, subtitle) { askForNewCode(mode) }
             content.addView(card)
         }
     }
@@ -675,12 +728,12 @@ class MainActivity : Activity() {
         content.setPadding(dp(14),dp(6),dp(14),dp(12))
         addCardTitle("⚙️ הגדרות")
         val cards=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
-        cards.addView(settingsSection("🔐","בחירת הסיסמה","4 ספרות, מילים או פס החלקה"){showPasswordSelection()})
+        cards.addView(settingsSection("🔐","בחירת הסיסמה","4 ספרות, מילים, פס החלקה או טביעת אצבע"){showPasswordSelection()})
         val iconVisible = isLauncherIconVisible()
         cards.addView(settingsSection("🙈","סמל האפליקציה", if (iconVisible) "לחץ כדי להסתיר" else "לחץ כדי להחזיר") { toggleLauncherIcon() })
         cards.addView(settingsSection("↻","עדכון","התקן את הגרסה האחרונה"){AppUpdater.downloadAndInstall(this)})
         cards.addView(settingsSection("🌐","הגנת גלישה","הגדרות VPN"){startActivity(Intent(Settings.ACTION_VPN_SETTINGS))})
-        cards.addView(settingsSection("⏸","כיבוי ההגנה","כיבוי מוגן בקוד"){
+        cards.addView(settingsSection("⏸","כיבוי ההגנה","כיבוי ההגנה"){
             if(BlockerVpnService.isProtectionActive) requestStopProtection() else showMessage("ההגנה כבר כבויה.")
         })
         content.addView(cards)
@@ -914,7 +967,7 @@ class MainActivity : Activity() {
 
             screen.addView(TextView(this).apply {
                 text = when (mode) {
-                    "PIN4" -> "Type an unlock password"
+                    "PIN4" -> "הגדרת סיסמת פתיחה"
                     else -> "בחר סיסמת פתיחה"
                 }
                 textSize = 22f
@@ -951,7 +1004,7 @@ class MainActivity : Activity() {
                 }
                 screen.addView(input, LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(6) })
 
-                val keys = arrayOf(arrayOf("1","2","3"), arrayOf("4","5","6"), arrayOf("7","8","9"), arrayOf("","0","⌫"))
+                val keys = arrayOf(arrayOf("1","2","3"), arrayOf("4","5","6"), arrayOf("7","8","9"), arrayOf("⌫","0",""))
                 keys.forEach { values ->
                     val row = LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL
@@ -1045,6 +1098,16 @@ class MainActivity : Activity() {
                 screen.addView(actions, LinearLayout.LayoutParams(-1, dp(60)))
             }
 
+            "BIOMETRIC" -> {
+                screen.addView(TextView(this).apply {
+                    text = "אימות באמצעות טביעת אצבע או ביומטריה של המכשיר"
+                    textSize = 15f
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.CENTER
+                }, LinearLayout.LayoutParams(-1, dp(52)))
+                addPasswordActionButtons(screen, oldHash, mode, EditText(this))
+            }
+
             else -> {
                 screen.addView(TextView(this).apply {
                     text = "מספרים ומילים — באורך חופשי"
@@ -1094,6 +1157,10 @@ class MainActivity : Activity() {
                     current?.error = "סיסמה נוכחית שגויה"
                     return@setOnClickListener
                 }
+                if (mode == "BIOMETRIC") {
+                    authenticateAndSaveBiometric(oldHash, screen)
+                    return@setOnClickListener
+                }
                 val value = input.text.toString()
                 val valid = if (mode == "PIN4") value.length == 4 && value.all { it.isDigit() } else value.length >= 4
                 if (!valid) {
@@ -1109,6 +1176,36 @@ class MainActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(0, dp(56), 1f).apply { leftMargin = dp(8) })
         screen.addView(actions, LinearLayout.LayoutParams(-1, dp(66)))
+    }
+
+    private fun authenticateAndSaveBiometric(oldHash: String?, screen: LinearLayout) {
+        if (Build.VERSION.SDK_INT < 28) {
+            showMessage("טביעת אצבע אינה זמינה בגרסת Android זו.")
+            return
+        }
+        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+        val prompt = android.hardware.biometrics.BiometricPrompt.Builder(this)
+            .setTitle("מגן +")
+            .setSubtitle("הגדרת טביעת אצבע")
+            .setDescription("אשר את הזהות שלך כדי להפעיל כניסה ביומטרית.")
+            .setNegativeButton("ביטול", executor) { _, _ -> }
+            .build()
+        prompt.authenticate(android.os.CancellationSignal(), executor,
+            object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
+                    runOnUiThread {
+                        prefs.edit()
+                            .putString("pin_hash", hash("BIOMETRIC:" + packageName))
+                            .putString("auth_mode", "BIOMETRIC")
+                            .apply()
+                        unlocked = true
+                        showHome()
+                    }
+                }
+                override fun onAuthenticationFailed() {
+                    runOnUiThread { showMessage("האימות הביומטרי לא הצליח.") }
+                }
+            })
     }
 
     private fun requestUninstall() {
