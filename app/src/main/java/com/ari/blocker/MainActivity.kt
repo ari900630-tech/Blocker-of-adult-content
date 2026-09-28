@@ -47,7 +47,8 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildShell()
-        showSetup()
+        if (prefs.getString("pin_hash", null) != null) showLockScreen()
+        else showSetup()
         requestNotificationPermissionIfNeeded()
     }
 
