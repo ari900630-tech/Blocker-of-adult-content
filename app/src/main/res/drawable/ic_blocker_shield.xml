@@ -9,17 +9,9 @@
     <path android:fillColor="#FFFFFF"
         android:pathData="M54,18 L80,27 L80,47 C80,64 70,78 54,88 C38,78 28,64 28,47 L28,27 Z"/>
 
-    <!-- 18 -->
+    <!-- Small centered lock -->
     <path android:fillColor="#7D60E2"
-        android:pathData="M37,35 L43,31 L47,31 L47,53 L42,53 L42,38 L37,41 Z"/>
-    <path android:fillColor="#7D60E2"
-        android:pathData="M52,31 L64,31 L67,34 L67,41 L64,44 L67,47 L67,50 L64,53 L52,53 L49,50 L49,47 L52,44 L49,41 L49,34 Z
-        M54,35 L54,40 L62,40 L62,35 Z
-        M54,44 L54,49 L62,49 L62,44 Z"/>
-
-    <!-- Wide, delicate lock clearly separated below 18 -->
-    <path android:fillColor="#7D60E2"
-        android:pathData="M43,69 L43,66 C43,61 47,58 54,58 C61,58 65,61 65,66 L65,69 L71,69 L71,86 L37,86 L37,69 Z
-        M49,69 L59,69 L59,66 C59,63 57,62 54,62 C51,62 49,63 49,66 Z
-        M52,75 L56,75 L56,81 L52,81 Z"/>
+        android:pathData="M48,68 L48,65 C48,61 50,59 54,59 C58,59 60,61 60,65 L60,68 L64,68 L64,78 L44,78 L44,68 Z
+        M51,68 L57,68 L57,65 C57,63 56,62 54,62 C52,62 51,63 51,65 Z
+        M53,72 L55,72 L55,76 L53,76 Z"/>
 </vector>
