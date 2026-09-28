@@ -50,14 +50,10 @@ class AppBlockAccessibilityService : AccessibilityService() {
             temporaryAllowedPackage = pkg
             temporaryAllowedUntil = maxOf(temporaryAllowedUntil, browserAllowedUntil)
 
-            if (isNonGoogleBrowserUrlVisible()) {
-                controlPrefs.edit().remove("browser_allowed_until_$pkg").apply()
-                temporaryAllowedPackage = null
-                temporaryAllowedUntil = 0L
-                unlockedPackage = null
-                launchGate(pkg, allowAuthentication = false)
-                return
-            }
+            // Once the user entered Chrome through the protected-search flow,
+            // keep the browser session allowed for the configured time. Do not revoke
+            // it merely because a Google result opens an external website; the VPN
+            // filtering layer remains responsible for blocking unsafe destinations.
             return
         }
 
