@@ -36,7 +36,7 @@ new_on_resume = '''    override fun onResume() {
         }
     }'''
 
-pattern = r'(?ms)^    override fun onResume\(\) \{.*?^    \}\n\n    override fun onStop\(\)'
+pattern = r'(?ms)^    override fun onResume\(\) \{.*?^    \}\n\n    override fun onStop\('
 replacement = new_on_resume + '\n\n    override fun onStop('
 s, count = re.subn(pattern, replacement, s, count=1)
 if count != 1:
