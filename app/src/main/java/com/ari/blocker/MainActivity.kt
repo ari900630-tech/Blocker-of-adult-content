@@ -47,7 +47,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildShell()
-        showEntranceScreen()
+        showSetup()
         requestNotificationPermissionIfNeeded()
     }
 
@@ -58,24 +58,6 @@ class MainActivity : Activity() {
             background = purpleGradient()
             layoutDirection = LinearLayout.LAYOUT_DIRECTION_RTL
         }
-
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(18), dp(20), dp(10))
-        }
-        top.addView(TextView(this).apply {
-            text = "🛡️"
-            textSize = 34f
-        }, LinearLayout.LayoutParams(dp(50), dp(54)))
-        top.addView(TextView(this).apply {
-            text = "מגן +"
-            textSize = 19f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER_VERTICAL
-        }, LinearLayout.LayoutParams(0, dp(60), 1f))
-        root.addView(top)
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
@@ -107,7 +89,7 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setTextColor(Color.rgb(58, 37, 104))
                 contentDescription = label
-                background = rounded(if (index == 0) Color.rgb(88, 231, 226) else Color.argb(245, 255, 255, 255), 18)
+                background = rounded(Color.argb(245, 255, 255, 255), 18)
                 setOnClickListener {
                     if (!unlocked && prefs.getString("pin_hash", null) != null) {
                         showLockScreen()
@@ -133,78 +115,6 @@ class MainActivity : Activity() {
         refreshNavSelection()
     }
 
-    private fun showEntranceScreen() {
-        unlocked = false
-        bottomNav.visibility = View.GONE
-        content.removeAllViews()
-        content.setPadding(dp(14), dp(24), dp(14), dp(24))
-
-        val screen = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(24), dp(30), dp(24), dp(28))
-            background = rounded(Color.argb(245, 255, 255, 255), 34)
-        }
-
-        val icon = ImageView(this).apply {
-            setImageResource(com.ari.blocker.R.drawable.ic_blocker_shield)
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-        }
-        screen.addView(icon, LinearLayout.LayoutParams(dp(128), dp(128)).apply {
-            bottomMargin = dp(10)
-        })
-
-        screen.addView(TextView(this).apply {
-            text = "מגן +"
-            textSize = 34f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(91, 62, 160))
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(50)))
-
-        screen.addView(TextView(this).apply {
-            text = "הגנה חכמה. כניסה פשוטה."
-            textSize = 17f
-            setTextColor(Color.rgb(108, 91, 140))
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(38)))
-
-        screen.addView(TextView(this).apply {
-            text = "האפליקציה מוכנה לשמור על האפליקציות והגלישה שלך."
-            textSize = 14f
-            setTextColor(Color.rgb(125, 112, 150))
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(55)))
-
-        val enter = TextView(this).apply {
-            text = if (prefs.getString("pin_hash", null) != null) "כניסה למגן" else "התחלת ההגנה"
-            textSize = 19f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            background = rounded(Color.rgb(125, 96, 226), 24)
-            elevation = dp(3).toFloat()
-            setOnClickListener {
-                if (prefs.getString("pin_hash", null) != null) showLockScreen()
-                else showSetup()
-            }
-        }
-        screen.addView(enter, LinearLayout.LayoutParams(-1, dp(62)).apply {
-            topMargin = dp(18)
-        })
-
-        screen.addView(TextView(this).apply {
-            text = "🛡️  פרטיות • הגנה • שליטה"
-            textSize = 12f
-            setTextColor(Color.rgb(125, 112, 150))
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(40)).apply {
-            topMargin = dp(12)
-        })
-
-        content.addView(screen, LinearLayout.LayoutParams(-1, 0, 1f))
-    }
-
     private fun showNav() {
         bottomNav.visibility = View.VISIBLE
     }
@@ -212,7 +122,7 @@ class MainActivity : Activity() {
     private fun refreshNavSelection() {
         navButtons.forEachIndexed { index, button ->
             button.isSelected = index == selectedNav
-            button.background = rounded(if (index == selectedNav) Color.rgb(88, 231, 226) else Color.argb(245, 255, 255, 255), 18)
+            button.background = rounded(Color.argb(245, 255, 255, 255), 18)
         }
     }
 
@@ -225,7 +135,6 @@ class MainActivity : Activity() {
         addButton("1. הגדר קוד / ביומטריה", Color.rgb(21, 101, 192)) { setPin() }
         addButton("2. הפעל הגנה", Color.rgb(46, 125, 50)) { requestVpnPermission() }
         addButton("3. הגדר אפליקציות") { showAppControl() }
-        addText("חשוב: Android לא מאפשר לאפליקציה רגילה לנעול את כפתור הבית/החזרה או להפעיל שירות נגישות בלי אישור מפורש שלך.")
     }
 
     private fun showLockScreen() {
