@@ -30,7 +30,6 @@ class AppBlockAccessibilityService : AccessibilityService() {
         val blockedByUser = controlPrefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
         val requireCodeForBlockedApps = getSharedPreferences("settings", MODE_PRIVATE).getBoolean("require_code_for_blocked_apps", true)
         val now = System.currentTimeMillis()
-        val persistedUnlockUntil = controlPrefs.getLong("unlock_until_$pkg", 0L)
 
         if (!isProtectedBrowser && (!blockedByUser || !requireCodeForBlockedApps)) {
             unlockedPackage = null
@@ -62,11 +61,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
             return
         }
 
-        if (persistedUnlockUntil > now) {
-            unlockedPackage = pkg
-            return
-        }
-
+        if (unlockedPackage != null && unlockedPackage != pkg) unlockedPackage = null
         if (unlockedPackage == pkg) return
         if (now - gateLaunchAt < 1200L) return
         gateLaunchAt = now
@@ -140,9 +135,6 @@ class AppBlockAccessibilityService : AccessibilityService() {
     }
 
     fun allowCurrentPackage(pkg: String) {
-        val until = System.currentTimeMillis() + 5 * 60_000L
-        getSharedPreferences("app_control", MODE_PRIVATE).edit()
-            .putLong("unlock_until_$pkg", until).apply()
         unlockedPackage = pkg
         temporaryAllowedPackage = null
         temporaryAllowedUntil = 0L
