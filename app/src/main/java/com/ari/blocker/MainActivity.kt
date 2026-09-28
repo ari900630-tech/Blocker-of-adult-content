@@ -337,35 +337,45 @@ class MainActivity : Activity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(14), dp(8))
+            layoutDirection = LinearLayout.LAYOUT_DIRECTION_RTL
+            setPadding(dp(14), dp(8), dp(14), dp(8))
             background = rounded(Color.argb(245, 255, 255, 255), 25)
         }
+
+        val toggle = TextView(this).apply {
+            text = if (active) "✓" else "○"
+            textSize = 28f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            background = rounded(
+                if (active) Color.rgb(125, 96, 226) else Color.rgb(180, 170, 205),
+                100
+            )
+            contentDescription = if (active) "כיבוי ההגנה" else "הפעלת ההגנה"
+            setOnClickListener {
+                if (BlockerVpnService.isProtectionActive) {
+                    stopProtection()
+                } else {
+                    requestVpnPermission()
+                }
+            }
+        }
+
+        // Fixed on the right side; it never slides when its state changes.
+        row.addView(toggle, LinearLayout.LayoutParams(dp(58), dp(58)))
+
         row.addView(TextView(this).apply {
             text = if (active) "הגנה פעילה" else "הפעל הגנה"
             textSize = 17f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(91, 62, 160))
             gravity = Gravity.CENTER_VERTICAL
-        }, LinearLayout.LayoutParams(0, dp(64), 1f))
-        val protectionSwitch = android.widget.Switch(this).apply {
-            isChecked = active
-            text = ""
-            scaleX = 1.18f
-            scaleY = 1.18f
-            contentDescription = if (active) "כיבוי ההגנה" else "הפעלת ההגנה"
-            setOnCheckedChangeListener { _, checked ->
-                if (checked) {
-                    requestVpnPermission()
-                } else {
-                    isChecked = true
-                    requestStopProtection()
-                }
-            }
-        }
-        row.addView(protectionSwitch, LinearLayout.LayoutParams(dp(66), dp(58)))
-        row.setOnClickListener {
-            protectionSwitch.performClick()
-        }
+        }, LinearLayout.LayoutParams(0, dp(64), 1f).apply {
+            marginEnd = dp(12)
+        })
+
+        row.setOnClickListener { toggle.performClick() }
         return row
     }
 
@@ -516,7 +526,29 @@ class MainActivity : Activity() {
                                 blockedPrefs.edit().putStringSet("blocked_apps", set).apply()
                             }
                         }
+
                         row.addView(appSwitch, LinearLayout.LayoutParams(dp(58), dp(52)))
+
+                        if (icon != null) {
+                            row.addView(ImageView(this).apply {
+                                setImageDrawable(icon)
+                                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                            }, LinearLayout.LayoutParams(dp(48), dp(52)).apply {
+                                marginStart = dp(6)
+                                marginEnd = dp(6)
+                            })
+                        }
+
+                        row.addView(TextView(this).apply {
+                            text = label
+                            textSize = 16f
+                            typeface = Typeface.DEFAULT_BOLD
+                            setTextColor(Color.rgb(45, 35, 70))
+                            gravity = Gravity.CENTER_VERTICAL
+                            maxLines = 1
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                        }, LinearLayout.LayoutParams(0, dp(52), 1f))
+
                         row.setOnClickListener { appSwitch.performClick() }
 
                         list.addView(row, LinearLayout.LayoutParams(-1, dp(66)).apply {
@@ -856,35 +888,7 @@ class MainActivity : Activity() {
     }
 
     private fun requestStopProtection() {
-        val pinHash = prefs.getString("pin_hash", null)
-        if (pinHash == null) {
-            showMessage("כדי לכבות את ההגנה צריך להגדיר קוד גישה.")
-            return
-        }
-        val input = EditText(this).apply {
-            hint = "קוד גישה"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            imeOptions = EditorInfo.IME_ACTION_DONE
-            setSingleLine(true)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("כיבוי הגנת הגלישה")
-            .setMessage("ההגנה פעילה. כדי לכבות אותה יש לאשר עם קוד הגישה.")
-            .setView(input)
-            .setPositiveButton("כיבוי", null)
-            .setNegativeButton("ביטול", null)
-            .create().also { dialog ->
-                dialog.setOnShowListener {
-                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                        if (hash(input.text.toString()) != pinHash) {
-                            input.error = "קוד שגוי"
-                            return@setOnClickListener
-                        }
-                        dialog.dismiss()
-                        stopProtection()
-                    }
-                }
-            }.show()
+        stopProtection()
     }
 
     private fun setPin() {
