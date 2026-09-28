@@ -144,7 +144,7 @@ class MainActivity : Activity() {
         content.removeAllViews()
         content.setPadding(dp(14), dp(10), dp(14), dp(14))
         addCardTitle("הגדרת מגן +")
-        addText("לפני הפעלת החסימה יש לאשר את ההרשאות הנדרשות. לאחר מכן לחץ על „הפעל חסימה“.")
+        addText("אין אפשרות לדלג. יש לאשר את כל ההרשאות לפי הסדר, ורק בסוף להגדיר סיסמת פתיחה.")
 
         val accessibilityGranted = isAccessibilityServiceEnabled()
         val overlayGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
@@ -155,27 +155,31 @@ class MainActivity : Activity() {
         val pinGranted = prefs.getString("pin_hash", null) != null
 
         val statusLine = { ok: Boolean -> if (ok) "✓ מאושר" else "נדרש אישור" }
-        content.addView(settingsSection("🔐", "סיסמת פתיחה", statusLine(pinGranted)) { showPasswordSelection() })
-        content.addView(settingsSection("◉", "שירות נגישות לחסימה", statusLine(accessibilityGranted)) { openAccessibilitySettings() })
-        content.addView(settingsSection("▣", "מעל אפליקציות אחרות", statusLine(overlayGranted)) { requestOverlayPermission() })
-        content.addView(settingsSection("🛡️", "הגנת הסרה", statusLine(adminGranted)) {
-            val admin = BlockerDeviceAdminReceiver.component(this)
-            startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
-                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "הפעלת מנהל המכשיר מגינה על מגן + מפני הסרה רגילה.")
-            })
-        })
-        content.addView(settingsSection("🔔", "התראות", statusLine(notificationGranted)) { requestNotificationPermissionIfNeeded() })
 
-        val allPermissions = pinGranted && accessibilityGranted && overlayGranted && adminGranted && notificationGranted
-        addButton(
-            if (allPermissions) "🛡️ הפעל חסימה" else "🔒 אשר את כל ההרשאות תחילה",
-            if (allPermissions) Color.rgb(46,125,50) else Color.rgb(125,96,226),
-            selected = allPermissions
-        ) {
-            if (!allPermissions) {
+        content.addView(settingsSection("◉", "1. שירות נגישות לחסימה", statusLine(accessibilityGranted)) {
+            if (!accessibilityGranted) openAccessibilitySettings()
+        })
+        content.addView(settingsSection("▣", "2. מעל אפליקציות אחרות", statusLine(overlayGranted)) {
+            if (!overlayGranted) requestOverlayPermission()
+        })
+        content.addView(settingsSection("🛡️", "3. הגנת הסרה", statusLine(adminGranted)) {
+            if (!adminGranted) {
+                val admin = BlockerDeviceAdminReceiver.component(this)
+                startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                    putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
+                    putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "הפעלת מנהל המכשיר מגינה על מגן + מפני הסרה רגילה.")
+                })
+            }
+        })
+        content.addView(settingsSection("🔔", "4. התראות", statusLine(notificationGranted)) {
+            if (!notificationGranted) requestNotificationPermissionIfNeeded()
+        })
+
+        val prePasswordReady = accessibilityGranted && overlayGranted && adminGranted && notificationGranted
+
+        if (!prePasswordReady) {
+            addButton("🔒 המשך להרשאה הבאה", Color.rgb(125, 96, 226), selected = false) {
                 when {
-                    !pinGranted -> showPasswordSelection()
                     !accessibilityGranted -> openAccessibilitySettings()
                     !overlayGranted -> requestOverlayPermission()
                     !adminGranted -> {
@@ -187,11 +191,27 @@ class MainActivity : Activity() {
                     }
                     !notificationGranted -> requestNotificationPermissionIfNeeded()
                 }
-            } else {
-                requestVpnPermission()
             }
+            addText("הסיסמה תופיע רק לאחר שכל ארבע ההרשאות שלמעלה אושרו.")
+            return
         }
-        addText("לאחר אישור ה־VPN תופעל החסימה ותעבור למסך הראשי.")
+
+        content.addView(settingsSection("🔐", "5. סיסמת פתיחה — אחרונה", statusLine(pinGranted)) {
+            showPasswordSelection()
+        })
+
+        if (!pinGranted) {
+            addButton("🔐 הגדר סיסמה והמשך", Color.rgb(46, 125, 50), selected = true) {
+                showPasswordSelection()
+            }
+            addText("לא ניתן להפעיל את החסימה או לעבור למסך הראשי לפני שמירת הסיסמה.")
+            return
+        }
+
+        addButton("🛡️ הפעל חסימה", Color.rgb(46, 125, 50), selected = true) {
+            requestVpnPermission()
+        }
+        addText("זהו השלב האחרון. לאחר אישור ה‑VPN תופעל החסימה ותעבור למסך הראשי.")
     }
 
     private fun showEntryScreen() {
@@ -1311,7 +1331,11 @@ class MainActivity : Activity() {
                             .putString("auth_mode", "BIOMETRIC")
                             .apply()
                         unlocked = true
-                        showHome()
+                        if (setupFlowActive && !prefs.getBoolean("setup_complete", false)) {
+                            showSetup()
+                        } else {
+                            showHome()
+                        }
                     }
                 }
                 override fun onAuthenticationFailed() {
@@ -1330,9 +1354,9 @@ class MainActivity : Activity() {
                 else {
                     dialog.dismiss()
                     if (BlockerVpnService.isProtectionActive) stopProtection()
-                    // Uninstall is available only after explicit in-app authentication.
-                    BlockerDeviceAdminReceiver.releaseProtectionForUninstall(this)
-                    startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))
+                    // Keep device-admin protection enabled. Uninstall must not be unlocked by this button.
+                    showMessage("הגנת ההסרה פעילה. כדי להסיר את האפליקציה יש לבטל קודם את מנהל המכשיר בהגדרות המכשיר.")
+
                 }
             }
         }
@@ -1399,7 +1423,7 @@ class MainActivity : Activity() {
             showSetup()
         }
         if (!hasStartedOnce) hasStartedOnce = true
-        if (unlocked) {
+        if (unlocked && !setupFlowActive) {
             when (selectedNav) {
                 0 -> showHome()
                 2 -> showSettings()
@@ -1419,12 +1443,17 @@ class MainActivity : Activity() {
         if (requestCode == VPN_REQUEST) {
             if (resultCode == RESULT_OK) {
                 startProtection()
-                prefs.edit().putBoolean("setup_complete", true).apply()
-                setupFlowActive = false
-                showHome()
+                if (prefs.getString("pin_hash", null) != null) {
+                    prefs.edit().putBoolean("setup_complete", true).apply()
+                    setupFlowActive = false
+                    showHome()
+                } else {
+                    showSetup()
+                    showMessage("יש להגדיר סיסמת פתיחה לפני סיום ההגדרה.")
+                }
             } else {
-                showHome()
-                showMessage("הפעלת ההגנה בוטלה. אפשר לנסות שוב.")
+                showSetup()
+                showMessage("הפעלת החסימה בוטלה. לא ניתן לדלג על שלב זה.")
             }
         }
     }
