@@ -4,12 +4,14 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityEvent
+import android.net.Uri
 
 class AppBlockAccessibilityService : AccessibilityService() {
     private var unlockedPackage: String? = null
     private var temporaryAllowedPackage: String? = null
     private var temporaryAllowedUntil = 0L
     private var gateLaunchAt = 0L
+    private var lastSearchRedirectAt = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -50,10 +52,13 @@ class AppBlockAccessibilityService : AccessibilityService() {
             temporaryAllowedPackage = pkg
             temporaryAllowedUntil = maxOf(temporaryAllowedUntil, browserAllowedUntil)
 
-            // Once the user entered Chrome through the protected-search flow,
-            // keep the browser session allowed for the configured time. Do not revoke
-            // it merely because a Google result opens an external website; the VPN
-            // filtering layer remains responsible for blocking unsafe destinations.
+            // Block explicit adult search queries even when Google SafeSearch returns partial results.
+            if (now - lastSearchRedirectAt > 1500L && containsBlockedSearchTerm(rootInActiveWindow)) {
+                lastSearchRedirectAt = now
+                redirectToSafeSearchHome(pkg)
+                return
+            }
+
             return
         }
 
@@ -62,6 +67,44 @@ class AppBlockAccessibilityService : AccessibilityService() {
         if (now - gateLaunchAt < 1200L) return
         gateLaunchAt = now
         launchGate(pkg, allowAuthentication = true)
+    }
+
+    private fun containsBlockedSearchTerm(root: AccessibilityNodeInfo?): Boolean {
+        if (root == null) return false
+        return try {
+            val texts = mutableListOf<String>()
+            collectVisibleText(root, texts)
+            val combined = texts.joinToString(" ").lowercase()
+            BLOCKED_SEARCH_TERMS.any { term ->
+                Regex("(?<![a-z0-9])${Regex.escape(term)}(?![a-z0-9])").containsMatchIn(combined)
+            }
+        } catch (_: Exception) {
+            false
+        } finally {
+            root.recycle()
+        }
+    }
+
+    private fun collectVisibleText(node: AccessibilityNodeInfo, out: MutableList<String>) {
+        node.text?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(out::add)
+        node.contentDescription?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(out::add)
+        for (i in 0 until node.childCount) {
+            node.getChild(i)?.let { child ->
+                collectVisibleText(child, out)
+                child.recycle()
+            }
+        }
+    }
+
+    private fun redirectToSafeSearchHome(pkg: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/?safe=active")).apply {
+                setPackage(pkg)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            })
+        } catch (_: Exception) {
+            performGlobalAction(GLOBAL_ACTION_BACK)
+        }
     }
 
     private fun isNonGoogleBrowserUrlVisible(): Boolean {
@@ -89,7 +132,6 @@ class AppBlockAccessibilityService : AccessibilityService() {
         if (v.isBlank() || v.contains(" ")) return false
         if (v == "localhost" || v.startsWith("127.") || v.startsWith("192.168.") || v.startsWith("10.")) return false
 
-        // Detect full URLs and bare domains typed into the browser address bar.
         return v.contains(".") &&
             v.matches(Regex("[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+"))
     }
@@ -148,6 +190,11 @@ class AppBlockAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {}
 
     companion object {
+        private val BLOCKED_SEARCH_TERMS = setOf(
+            "sex", "porn", "porno", "pornography", "xxx", "hentai", "nude", "nudes", "naked",
+            "פורנו", "סקס", "עירום", "ערום"
+        )
+
         val PROTECTED_BROWSER_PACKAGES = setOf(
             "com.android.chrome", "org.chromium.chrome", "org.mozilla.firefox",
             "com.microsoft.emmx", "com.brave.browser", "com.opera.browser",
