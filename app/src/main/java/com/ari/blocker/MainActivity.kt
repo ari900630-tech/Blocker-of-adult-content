@@ -891,6 +891,11 @@ class MainActivity : Activity() {
     }
 
     private fun requestVpnPermission() {
+        if (!isAccessibilityServiceEnabled()) {
+            showMessage("כדי שהחסימה תעבוד גם כשעוברים לאפליקציה אחרת, יש לאשר את שירות הנגישות של מגן +.")
+            openAccessibilitySettings()
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             showMessage("כדי שמסך הקוד יוכל להופיע מעל האפליקציה החסומה, יש לאשר את ההרשאה „מעל אפליקציות אחרות”.")
             requestOverlayPermission()
@@ -907,6 +912,23 @@ class MainActivity : Activity() {
         // Launch Android's VPN approval screen immediately.
         // No intermediate in-app confirmation screen.
         startActivityForResult(intent, VPN_REQUEST)
+    }
+
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val enabled = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        val expected = ComponentName(this, AppBlockAccessibilityService::class.java).flattenToString()
+        return enabled.split(':').any { it.equals(expected, ignoreCase = true) }
+    }
+
+    private fun openAccessibilitySettings() {
+        try {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        } catch (_: Exception) {
+            startActivity(Intent(Settings.ACTION_SETTINGS))
+        }
     }
 
     private fun requestOverlayPermission() {
