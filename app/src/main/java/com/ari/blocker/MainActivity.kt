@@ -926,14 +926,6 @@ class MainActivity : Activity() {
         return enabled.split(':').any { it.equals(expected, ignoreCase = true) }
     }
 
-    private fun openAccessibilitySettings() {
-        try {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        } catch (_: Exception) {
-            startActivity(Intent(Settings.ACTION_SETTINGS))
-        }
-    }
-
     private fun requestOverlayPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             showMessage("הרשאת „מעל אפליקציות אחרות” אינה נדרשת בגרסת Android הזו.")
