@@ -51,8 +51,7 @@ class MainActivity : Activity() {
             android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN
         )
         buildShell()
-        if (prefs.getString("pin_hash", null) != null) showEntryScreen()
-        else showSetup()
+        showEntryScreen()
         requestNotificationPermissionIfNeeded()
     }
 
@@ -173,7 +172,13 @@ class MainActivity : Activity() {
             animator.addUpdateListener { progress = it.animatedValue as Int }
             animator.addListener(object : android.animation.AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: android.animation.Animator) {
-                    if (!isFinishing) showLockScreen()
+                    if (!isFinishing) {
+                        if (prefs.getString("pin_hash", null) != null) {
+                            showLockScreen()
+                        } else {
+                            showSetup()
+                        }
+                    }
                 }
             })
             animator.start()
