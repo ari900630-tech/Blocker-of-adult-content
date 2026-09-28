@@ -74,8 +74,9 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             setPadding(dp(18), dp(6), dp(18), dp(12))
+            minimumHeight = dp(240)
         }
-        scroll.addView(content)
+        scroll.addView(content, ScrollView.LayoutParams(-1, -1))
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         bottomNav = LinearLayout(this).apply {
@@ -152,11 +153,18 @@ class MainActivity : Activity() {
         unlocked = false
         content.removeAllViews()
         content.setPadding(0, 0, 0, 0)
+        content.minimumHeight = mainScroll.height.coerceAtLeast(dp(240))
+        content.gravity = Gravity.CENTER
+
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+        val entryWidth = (screenWidth - dp(40)).coerceAtMost(dp(330)).coerceAtLeast(dp(220))
+        val entryHeight = (screenHeight - dp(80)).coerceIn(dp(200), dp(300))
 
         val entry = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(24), dp(26), dp(24), dp(26))
+            setPadding(dp(24), dp(22), dp(24), dp(22))
             background = rounded(Color.rgb(91, 62, 160), 32)
             scaleX = 0.72f
             scaleY = 0.72f
@@ -186,7 +194,7 @@ class MainActivity : Activity() {
             })
             animator.start()
         }, LinearLayout.LayoutParams(dp(190), dp(6)).apply { topMargin = dp(16) })
-        content.addView(entry, LinearLayout.LayoutParams(dp(250), dp(220)).apply { gravity = Gravity.CENTER })
+        content.addView(entry, LinearLayout.LayoutParams(entryWidth, entryHeight).apply { gravity = Gravity.CENTER })
 
         entry.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(320).start()
     }
