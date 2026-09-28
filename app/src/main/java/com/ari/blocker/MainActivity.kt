@@ -573,19 +573,9 @@ class MainActivity : Activity() {
                         }, LinearLayout.LayoutParams(0, dp(52), 1f))
                         row.addView(appSwitch, LinearLayout.LayoutParams(dp(64), dp(52)))
 
-                        // Require two taps on the whole app row before changing its lock state.
-                        var lastTap = 0L
+                        // The entire app row is clickable. One tap toggles the switch.
                         row.setOnClickListener {
-                            val now = android.os.SystemClock.uptimeMillis()
-                            if (now - lastTap <= 450L) {
-                                appSwitch.performClick()
-                                lastTap = 0L
-                            } else {
-                                lastTap = now
-                                row.animate().scaleX(0.985f).scaleY(0.985f).setDuration(80).withEndAction {
-                                    row.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
-                                }.start()
-                            }
+                            appSwitch.isChecked = !appSwitch.isChecked
                         }
 
                         list.addView(row, LinearLayout.LayoutParams(-1, dp(66)).apply {
@@ -735,7 +725,7 @@ class MainActivity : Activity() {
             if(BlockerVpnService.isProtectionActive) requestStopProtection() else showMessage("ההגנה כבר כבויה.")
         })
         content.addView(cards)
-        addDeviceManagementControls()
+        // Device-removal status is intentionally hidden from the settings UI.
     }
 
     private fun settingsSection(icon:String,title:String,subtitle:String,action:()->Unit):LinearLayout{
