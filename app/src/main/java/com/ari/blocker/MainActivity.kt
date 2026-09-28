@@ -726,6 +726,9 @@ class MainActivity : Activity() {
         cards.addView(settingsSection("🙈","סמל האפליקציה", if (iconVisible) "לחץ כדי להסתיר" else "לחץ כדי להחזיר") { toggleLauncherIcon() })
         cards.addView(settingsSection("↻","עדכון","התקן את הגרסה האחרונה"){AppUpdater.downloadAndInstall(this)})
         cards.addView(settingsSection("🌐","הגנת גלישה","הגדרות VPN"){startActivity(Intent(Settings.ACTION_VPN_SETTINGS))})
+        val accessibilityGranted = isAccessibilityServiceEnabled()
+        cards.addView(settingsSection("◉","שירות חסימה",
+            if (accessibilityGranted) "מאושר — החסימה יכולה להגן על אפליקציות" else "נדרש אישור") { openAccessibilitySettings() })
         val overlayGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
         cards.addView(settingsSection("▣","מעל אפליקציות אחרות",
             if (overlayGranted) "מאושר" else "נדרש אישור") { requestOverlayPermission() })
@@ -1316,7 +1319,12 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (unlocked && selectedNav == 0) showHome()
+        if (unlocked) {
+            when (selectedNav) {
+                0 -> showHome()
+                2 -> showSettings()
+            }
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
