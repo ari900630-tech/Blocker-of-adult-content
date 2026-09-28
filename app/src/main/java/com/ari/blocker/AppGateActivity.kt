@@ -80,6 +80,10 @@ class AppGateActivity : Activity() {
             text="הזן את סיסמת הפתיחה";textSize=15f;setTextColor(Color.rgb(241,238,255));gravity=Gravity.CENTER
         },LinearLayout.LayoutParams(-1,dp(34)))
         val mode = prefs.getString("auth_mode","PIN4")
+        if (mode == "BIOMETRIC") {
+            authenticateBiometric()
+            return
+        }
         if(mode=="PIN4") {
             val input=EditText(this).apply{
                 codeInput=this;inputType=InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
@@ -172,7 +176,7 @@ class AppGateActivity : Activity() {
         val cancel=CancellationSignal()
         prompt.authenticate(cancel,executor,object:BiometricPrompt.AuthenticationCallback(){
             override fun onAuthenticationSucceeded(result:BiometricPrompt.AuthenticationResult?){ allowAndClose() }
-            override fun onAuthenticationFailed(){ codeInput.error="הטביעה לא זוהתה. נסה שוב או השתמש בקוד." }
+            override fun onAuthenticationFailed(){ if(::codeInput.isInitialized) codeInput.error="הטביעה לא זוהתה. נסה שוב או השתמש בקוד." }
             override fun onAuthenticationError(errorCode:Int,errString:CharSequence?){
                 if(errorCode!=10 && errorCode!=13){
                     val msg=if(errString.isNullOrBlank()) "אימות ביומטרי לא הצליח." else "אימות ביומטרי לא הצליח: $errString"
