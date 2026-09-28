@@ -94,7 +94,7 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setTextColor(Color.rgb(58, 37, 104))
                 contentDescription = label
-                background = rounded(Color.argb(245, 255, 255, 255), 18)
+                background = navButtonBackground()
                 setOnClickListener {
                     if (!unlocked && prefs.getString("pin_hash", null) != null) {
                         showLockScreen()
@@ -127,7 +127,7 @@ class MainActivity : Activity() {
     private fun refreshNavSelection() {
         navButtons.forEachIndexed { index, button ->
             button.isSelected = index == selectedNav
-            button.background = rounded(Color.argb(245, 255, 255, 255), 18)
+            button.background = navButtonBackground()
         }
     }
 
@@ -137,8 +137,8 @@ class MainActivity : Activity() {
         content.removeAllViews()
         addCardTitle("ברוכים הבאים")
         addText("בפעם הראשונה יש להפעיל את ההגנה ולהגדיר דרך כניסה. לאחר מכן האפליקציה תוכל להגן על אתרים ואפליקציות שבחרת.")
-        addButton("1. הגדר קוד / ביומטריה", Color.rgb(21, 101, 192)) { setPin() }
-        addButton("2. הפעל הגנה", Color.rgb(46, 125, 50)) { requestVpnPermission() }
+        addButton("1. הגדר קוד / ביומטריה", Color.rgb(125, 96, 226)) { setPin() }
+        addButton("2. הפעל הגנה", Color.rgb(125, 96, 226)) { requestVpnPermission() }
         addButton("3. הגדר אפליקציות") { showAppControl() }
     }
 
@@ -486,78 +486,61 @@ class MainActivity : Activity() {
                     }, LinearLayout.LayoutParams(dp(82), dp(46)))
                     content.addView(finalHeader, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(6) })
 
-                    val grid = LinearLayout(this).apply {
+                    val list = LinearLayout(this).apply {
                         orientation = LinearLayout.VERTICAL
                     }
                     val blockedPrefs = getSharedPreferences("app_control", MODE_PRIVATE)
 
-                    apps.chunked(4).forEach { rowApps ->
+                    apps.forEach { appInfo ->
+                        val pkg = appInfo.activityInfo.packageName
+                        val label = runCatching { appInfo.activityInfo.loadLabel(packageManager).toString() }.getOrDefault(pkg)
+                        val icon = runCatching { appInfo.activityInfo.loadIcon(packageManager) }.getOrNull()
+                        val locked = blockedPrefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
+
                         val row = LinearLayout(this).apply {
                             orientation = LinearLayout.HORIZONTAL
-                            gravity = Gravity.CENTER
+                            gravity = Gravity.CENTER_VERTICAL
+                            layoutDirection = LinearLayout.LAYOUT_DIRECTION_RTL
+                            setPadding(dp(10), dp(7), dp(10), dp(7))
+                            background = navButtonBackground()
+                            setOnClickListener { appSwitch.performClick() }
                         }
-                        rowApps.forEach { appInfo ->
-                            val pkg = appInfo.activityInfo.packageName
-                            val label = runCatching { appInfo.activityInfo.loadLabel(packageManager).toString() }.getOrDefault(pkg)
-                            val icon = runCatching { appInfo.activityInfo.loadIcon(packageManager) }.getOrNull()
-                            val locked = blockedPrefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
 
-                            val card = LinearLayout(this).apply {
-                                orientation = LinearLayout.VERTICAL
-                                gravity = Gravity.CENTER
-                                setPadding(dp(4), dp(4), dp(4), dp(4))
-                                background = rounded(if (locked) Color.rgb(226,255,245) else Color.argb(245,255,255,255), 18)
-                            }
-
-                            val appSwitch = android.widget.Switch(this).apply {
-                                isChecked = locked
-                                scaleX = 0.72f
-                                scaleY = 0.72f
-                                contentDescription = "נעילת " + label
-                            }
-                            card.addView(appSwitch, LinearLayout.LayoutParams(dp(58), dp(34)).apply {
-                                gravity = Gravity.CENTER
-                            })
-
-                            if (icon != null) card.addView(android.widget.ImageView(this).apply {
-                                setImageDrawable(icon)
-                                scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
-                            }, LinearLayout.LayoutParams(dp(44), dp(44)).apply {
-                                gravity = Gravity.CENTER
-                            })
-
-                            card.addView(TextView(this).apply {
-                                text = label
-                                textSize = 10f
-                                typeface = Typeface.DEFAULT_BOLD
-                                setTextColor(Color.rgb(63,45,115))
-                                gravity = Gravity.CENTER
-                                maxLines = 2
-                                ellipsize = android.text.TextUtils.TruncateAt.END
-                            }, LinearLayout.LayoutParams(-1, dp(30)))
-
-                            fun updateLock(checked: Boolean) {
+                        row.addView(android.widget.Switch(this).apply {
+                            isChecked = locked
+                            scaleX = 0.78f
+                            scaleY = 0.78f
+                            contentDescription = "נעילת " + label
+                            setOnCheckedChangeListener { _, checked ->
                                 val set = blockedPrefs.getStringSet("blocked_apps", emptySet())?.toMutableSet() ?: mutableSetOf()
                                 if (checked) set.add(pkg) else set.remove(pkg)
                                 blockedPrefs.edit().putStringSet("blocked_apps", set).apply()
-                                card.background = rounded(if (checked) Color.rgb(226,255,245) else Color.argb(245,255,255,255), 18)
                             }
-                            appSwitch.setOnCheckedChangeListener { _, checked -> updateLock(checked) }
-                            card.setOnClickListener { appSwitch.performClick() }
+                        }, LinearLayout.LayoutParams(dp(58), dp(52)))
 
-                            row.addView(card, LinearLayout.LayoutParams(0, dp(118), 1f).apply {
-                                leftMargin = dp(3); rightMargin = dp(3); bottomMargin = dp(6)
-                            })
-                        }
-                        repeat(4 - rowApps.size) {
-                            row.addView(TextView(this), LinearLayout.LayoutParams(0, dp(118), 1f).apply {
-                                leftMargin = dp(3); rightMargin = dp(3)
-                            })
-                        }
-                        grid.addView(row, LinearLayout.LayoutParams(-1, dp(124)))
+                        if (icon != null) row.addView(ImageView(this).apply {
+                            setImageDrawable(icon)
+                            scaleType = ImageView.ScaleType.CENTER_INSIDE
+                        }, LinearLayout.LayoutParams(dp(48), dp(48)).apply {
+                            leftMargin = dp(8)
+                        })
+
+                        row.addView(TextView(this).apply {
+                            text = label
+                            textSize = 16f
+                            typeface = Typeface.DEFAULT_BOLD
+                            setTextColor(Color.rgb(63,45,115))
+                            gravity = Gravity.CENTER_VERTICAL
+                            maxLines = 1
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                        }, LinearLayout.LayoutParams(0, dp(52), 1f))
+
+                        list.addView(row, LinearLayout.LayoutParams(-1, dp(66)).apply {
+                            bottomMargin = dp(7)
+                        })
                     }
 
-                    if (apps.isEmpty()) grid.addView(TextView(this).apply {
+                    if (apps.isEmpty()) list.addView(TextView(this).apply {
                         text = "לא נמצאו אפליקציות עם סמל במסך הבית."
                         textSize = 15f
                         setTextColor(Color.WHITE)
@@ -567,7 +550,7 @@ class MainActivity : Activity() {
 
                     content.addView(ScrollView(this).apply {
                         isFillViewport = true
-                        addView(grid)
+                        addView(list)
                     }, LinearLayout.LayoutParams(-1, 0, 1f))
                 }
             }.start()
@@ -1257,6 +1240,12 @@ class MainActivity : Activity() {
 
     private fun showMessage(message: String) {
         AlertDialog.Builder(this).setMessage(message).setPositiveButton("אישור", null).show()
+    }
+
+    private fun navButtonBackground() = StateListDrawable().apply {
+        addState(intArrayOf(android.R.attr.state_pressed), rounded(Color.rgb(225, 216, 255), 18))
+        addState(intArrayOf(android.R.attr.state_selected), rounded(Color.rgb(237, 232, 255), 18))
+        addState(intArrayOf(), rounded(Color.argb(245, 255, 255, 255), 18))
     }
 
     private fun rounded(color: Int, radius: Int) = GradientDrawable().apply {
