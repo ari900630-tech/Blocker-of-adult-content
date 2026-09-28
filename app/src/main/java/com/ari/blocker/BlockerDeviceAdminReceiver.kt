@@ -11,6 +11,13 @@ class BlockerDeviceAdminReceiver : DeviceAdminReceiver() {
         enforceUninstallBlocked(context)
     }
 
+    override fun onDisableRequested(
+        context: Context,
+        intent: android.content.Intent
+    ): CharSequence {
+        return "אזהרה: ביטול מנהל המכשיר יבטל את הגנת ההסרה של מגן +. כל עוד ההרשאה פעילה, לא ניתן להסיר את האפליקציה בהסרה רגילה."
+    }
+
     companion object {
         fun component(context: Context): ComponentName =
             ComponentName(context, BlockerDeviceAdminReceiver::class.java)
