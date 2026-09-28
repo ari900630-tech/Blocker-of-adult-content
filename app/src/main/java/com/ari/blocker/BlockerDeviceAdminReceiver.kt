@@ -8,7 +8,7 @@ import android.content.Context
 class BlockerDeviceAdminReceiver : DeviceAdminReceiver() {
     override fun onEnabled(context: Context, intent: android.content.Intent) {
         super.onEnabled(context, intent)
-        enforceUninstallBlocked(context)
+        enforceProtection(context)
     }
 
     override fun onDisableRequested(
@@ -22,12 +22,29 @@ class BlockerDeviceAdminReceiver : DeviceAdminReceiver() {
         fun component(context: Context): ComponentName =
             ComponentName(context, BlockerDeviceAdminReceiver::class.java)
 
-        fun enforceUninstallBlocked(context: Context) {
+        fun enforceProtection(context: Context) {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val admin = component(context)
-            if (dpm.isDeviceOwnerApp(context.packageName) || dpm.isProfileOwnerApp(context.packageName)) {
+            val isOwner = dpm.isDeviceOwnerApp(context.packageName) || dpm.isProfileOwnerApp(context.packageName)
+            if (isOwner) {
+                // Keep this app protected from uninstall. Android Settings can then
+                // show app controls without allowing the app itself to be removed.
                 dpm.setUninstallBlocked(admin, context.packageName, true)
             }
+        }
+
+        fun releaseProtectionForUninstall(context: Context) {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val admin = component(context)
+            val isOwner = dpm.isDeviceOwnerApp(context.packageName) || dpm.isProfileOwnerApp(context.packageName)
+            if (isOwner) {
+                dpm.setUninstallBlocked(admin, context.packageName, false)
+            }
+        }
+
+        fun isDeviceOrProfileOwner(context: Context): Boolean {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            return dpm.isDeviceOwnerApp(context.packageName) || dpm.isProfileOwnerApp(context.packageName)
         }
     }
 }
