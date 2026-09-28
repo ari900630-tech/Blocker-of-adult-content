@@ -100,7 +100,7 @@ class MainActivity : Activity() {
             Triple("🔐", "בחירת הסיסמה", 3)
         )
         navItems.forEach { (symbol, label, index) ->
-            nav.addView(TextView(this).apply {
+            bottomNav.addView(TextView(this).apply {
                 navButtons.add(this)
                 text = "$symbol\n$label"
                 textSize = 11f
