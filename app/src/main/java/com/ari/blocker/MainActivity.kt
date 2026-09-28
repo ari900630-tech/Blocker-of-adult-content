@@ -41,6 +41,7 @@ class MainActivity : Activity() {
     private lateinit var bottomNav: LinearLayout
     private lateinit var mainScroll: ScrollView
     private var hasStartedOnce = false
+    private var setupFlowActive = false
     private var selectedNav = 0
     private var swipeDownX = 0f
     private var swipeDownY = 0f
@@ -138,17 +139,63 @@ class MainActivity : Activity() {
 
     private fun showSetup() {
         showNav()
+        setupFlowActive = true
         unlocked = true
         content.removeAllViews()
         content.setPadding(dp(14), dp(10), dp(14), dp(14))
-
         addCardTitle("הגדרת מגן +")
-        addButton("🔐 הגדרת סיסמה", Color.rgb(125, 96, 226)) { showPasswordSelection() }
-        addButton("🛡️ הפעלת ההגנה", Color.rgb(125, 96, 226)) { requestVpnPermission() }
-        addButton("📱 בחירת אפליקציות", Color.rgb(125, 96, 226)) { showAppControl() }
+        addText("לפני הפעלת החסימה יש לאשר את ההרשאות הנדרשות. לאחר מכן לחץ על „הפעל חסימה“.")
+
+        val accessibilityGranted = isAccessibilityServiceEnabled()
+        val overlayGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
+        val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminGranted = dpm.isAdminActive(BlockerDeviceAdminReceiver.component(this))
+        val notificationGranted = Build.VERSION.SDK_INT < 33 ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        val pinGranted = prefs.getString("pin_hash", null) != null
+
+        val statusLine = { ok: Boolean -> if (ok) "✓ מאושר" else "נדרש אישור" }
+        content.addView(settingsSection("🔐", "סיסמת פתיחה", statusLine(pinGranted)) { showPasswordSelection() })
+        content.addView(settingsSection("◉", "שירות נגישות לחסימה", statusLine(accessibilityGranted)) { openAccessibilitySettings() })
+        content.addView(settingsSection("▣", "מעל אפליקציות אחרות", statusLine(overlayGranted)) { requestOverlayPermission() })
+        content.addView(settingsSection("🛡️", "הגנת הסרה", statusLine(adminGranted)) {
+            val admin = BlockerDeviceAdminReceiver.component(this)
+            startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
+                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "הפעלת מנהל המכשיר מגינה על מגן + מפני הסרה רגילה.")
+            })
+        })
+        content.addView(settingsSection("🔔", "התראות", statusLine(notificationGranted)) { requestNotificationPermissionIfNeeded() })
+
+        val allPermissions = pinGranted && accessibilityGranted && overlayGranted && adminGranted && notificationGranted
+        addButton(
+            if (allPermissions) "🛡️ הפעל חסימה" else "🔒 אשר את כל ההרשאות תחילה",
+            if (allPermissions) Color.rgb(46,125,50) else Color.rgb(125,96,226),
+            selected = allPermissions
+        ) {
+            if (!allPermissions) {
+                when {
+                    !pinGranted -> showPasswordSelection()
+                    !accessibilityGranted -> openAccessibilitySettings()
+                    !overlayGranted -> requestOverlayPermission()
+                    !adminGranted -> {
+                        val admin = BlockerDeviceAdminReceiver.component(this)
+                        startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
+                            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "הפעלת מנהל המכשיר מגינה על מגן + מפני הסרה רגילה.")
+                        })
+                    }
+                    !notificationGranted -> requestNotificationPermissionIfNeeded()
+                }
+            } else {
+                requestVpnPermission()
+            }
+        }
+        addText("לאחר אישור ה־VPN תופעל החסימה ותעבור למסך הראשי.")
     }
 
     private fun showEntryScreen() {
+        setupFlowActive = false
         bottomNav.visibility = View.GONE
         unlocked = false
         content.removeAllViews()
@@ -184,7 +231,9 @@ class MainActivity : Activity() {
             animator.addListener(object : android.animation.AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: android.animation.Animator) {
                     if (!isFinishing) {
-                        if (prefs.getString("pin_hash", null) != null) {
+                        if (!prefs.getBoolean("setup_complete", false)) {
+                            showSetup()
+                        } else if (prefs.getString("pin_hash", null) != null) {
                             showLockScreen()
                         } else {
                             showSetup()
@@ -200,6 +249,7 @@ class MainActivity : Activity() {
     }
 
     private fun showLockScreen() {
+        setupFlowActive = false
         showNav()
         unlocked = false
         content.removeAllViews()
@@ -319,6 +369,7 @@ class MainActivity : Activity() {
     }
 
     private fun showHome() {
+        setupFlowActive = false
         showNav()
         content.removeAllViews()
         content.setPadding(dp(14), dp(4), dp(14), dp(12))
@@ -1233,7 +1284,7 @@ class MainActivity : Activity() {
                     .putString("auth_mode", mode)
                     .apply()
                 unlocked = true
-                showHome()
+                if (setupFlowActive && !prefs.getBoolean("setup_complete", false)) showSetup() else showHome()
             }
         }, LinearLayout.LayoutParams(0, dp(56), 1f).apply { leftMargin = dp(8) })
         screen.addView(actions, LinearLayout.LayoutParams(-1, dp(66)))
@@ -1341,8 +1392,11 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (hasStartedOnce && prefs.getString("pin_hash", null) != null && !unlocked) {
+        if (hasStartedOnce && prefs.getString("pin_hash", null) != null && !unlocked && !setupFlowActive) {
             showEntryScreen()
+        }
+        if (setupFlowActive) {
+            showSetup()
         }
         if (!hasStartedOnce) hasStartedOnce = true
         if (unlocked) {
@@ -1365,6 +1419,8 @@ class MainActivity : Activity() {
         if (requestCode == VPN_REQUEST) {
             if (resultCode == RESULT_OK) {
                 startProtection()
+                prefs.edit().putBoolean("setup_complete", true).apply()
+                setupFlowActive = false
                 showHome()
             } else {
                 showHome()
