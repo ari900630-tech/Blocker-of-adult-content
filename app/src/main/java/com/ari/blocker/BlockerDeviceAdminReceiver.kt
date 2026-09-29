@@ -4,6 +4,7 @@ import android.app.admin.DeviceAdminReceiver
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.os.UserManager
 
 class BlockerDeviceAdminReceiver : DeviceAdminReceiver() {
     override fun onEnabled(context: Context, intent: android.content.Intent) {
@@ -15,7 +16,7 @@ class BlockerDeviceAdminReceiver : DeviceAdminReceiver() {
         context: Context,
         intent: android.content.Intent
     ): CharSequence {
-        return "אזהרה: ביטול מנהל המכשיר יבטל את הגנת ההסרה של מגן +. כל עוד ההרשאה פעילה, לא ניתן להסיר את האפליקציה בהסרה רגילה."
+        return "אזהרה: ביטול מנהל המכשיר מבטל את הגנת ההסרה והגנת השליטה באפליקציה."
     }
 
     companion object {
@@ -25,11 +26,29 @@ class BlockerDeviceAdminReceiver : DeviceAdminReceiver() {
         fun enforceProtection(context: Context) {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val admin = component(context)
-            val isOwner = dpm.isDeviceOwnerApp(context.packageName) || dpm.isProfileOwnerApp(context.packageName)
-            if (isOwner) {
-                // Keep this app protected from uninstall. Android Settings can then
-                // show app controls without allowing the app itself to be removed.
-                dpm.setUninstallBlocked(admin, context.packageName, true)
+            val isDeviceOwner = dpm.isDeviceOwnerApp(context.packageName)
+            val isProfileOwner = dpm.isProfileOwnerApp(context.packageName)
+
+            if (isDeviceOwner || isProfileOwner) {
+                // Device/Profile Owner mode is the system-level protection path.
+                // These restrictions prevent ordinary Settings app-control actions
+                // such as uninstalling and controlling apps. The Accessibility
+                // service remains the password gate for the Settings UI.
+                try {
+                    dpm.setUninstallBlocked(admin, context.packageName, true)
+                } catch (_: SecurityException) {
+                    // Some OEM builds restrict this call even for a profile owner.
+                }
+
+                try {
+                    dpm.addUserRestriction(admin, UserManager.DISALLOW_UNINSTALL_APPS)
+                } catch (_: SecurityException) {
+                }
+
+                try {
+                    dpm.addUserRestriction(admin, UserManager.DISALLOW_APPS_CONTROL)
+                } catch (_: SecurityException) {
+                }
             }
         }
 
@@ -38,7 +57,18 @@ class BlockerDeviceAdminReceiver : DeviceAdminReceiver() {
             val admin = component(context)
             val isOwner = dpm.isDeviceOwnerApp(context.packageName) || dpm.isProfileOwnerApp(context.packageName)
             if (isOwner) {
-                dpm.setUninstallBlocked(admin, context.packageName, false)
+                try {
+                    dpm.setUninstallBlocked(admin, context.packageName, false)
+                } catch (_: SecurityException) {
+                }
+                try {
+                    dpm.clearUserRestriction(admin, UserManager.DISALLOW_UNINSTALL_APPS)
+                } catch (_: SecurityException) {
+                }
+                try {
+                    dpm.clearUserRestriction(admin, UserManager.DISALLOW_APPS_CONTROL)
+                } catch (_: SecurityException) {
+                }
             }
         }
 
