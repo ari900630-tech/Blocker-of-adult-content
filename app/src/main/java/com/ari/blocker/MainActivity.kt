@@ -726,9 +726,22 @@ class MainActivity : Activity() {
         } catch (_: Exception) { false }
     }
 
+    private fun openProtectedSettings(target: Intent) {
+        if (prefs.getString("pin_hash", null) == null) {
+            startActivity(target)
+            return
+        }
+        startActivity(Intent(this, AppGateActivity::class.java).apply {
+            putExtra("blocked_package", packageName)
+            putExtra("allow_authentication", true)
+            putExtra("protection_gate", true)
+            putExtra("settings_action", target.action)
+            putExtra("settings_data", target.dataString)
+        })
+    }
+
     private fun openAccessibilitySettings() {
-        try { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-        catch (_: Exception) { startActivity(Intent(Settings.ACTION_SETTINGS)) }
+        openProtectedSettings(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
 
     private fun openProtectedSearch() {
@@ -1048,7 +1061,7 @@ class MainActivity : Activity() {
             return
         }
         try {
-            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            openProtectedSettings(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         } catch (_: Exception) {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
         }
