@@ -46,6 +46,7 @@ class MainActivity : Activity() {
     private var swipeDownX = 0f
     private var swipeDownY = 0f
     private var swipeTracking = false
+    private var pendingProtectionStop = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -367,7 +368,12 @@ class MainActivity : Activity() {
     private fun verifyMainCode(input: EditText) {
         if (hash(input.text.toString()) == prefs.getString("pin_hash", null)) {
             unlocked = true
-            showHome()
+            if (pendingProtectionStop) {
+                pendingProtectionStop = false
+                stopProtection()
+            } else {
+                showHome()
+            }
         } else {
             input.selectAll()
             input.error = "קוד שגוי"
@@ -1070,7 +1076,14 @@ class MainActivity : Activity() {
     }
 
     private fun requestStopProtection() {
-        stopProtection()
+        if (prefs.getString("pin_hash", null) == null) {
+            showMessage("יש להגדיר קוד גישה לפני כיבוי ההגנה.")
+            return
+        }
+        pendingProtectionStop = true
+        unlocked = false
+        showLockScreen()
+        showMessage("כדי לכבות את ההגנה יש להזין קודם את קוד הגישה שהוגדר.")
     }
 
     private fun setPin() {
