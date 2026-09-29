@@ -22,10 +22,12 @@ class AppGateActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("settings", MODE_PRIVATE) }
     private lateinit var packageNameBlocked: String
     private lateinit var codeInput: EditText
+    private var protectionGate = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         packageNameBlocked = intent.getStringExtra("blocked_package") ?: run { finish(); return }
+        protectionGate = intent.getBooleanExtra("protection_gate", false)
         if (!intent.getBooleanExtra("allow_authentication", true) &&
             AppBlockAccessibilityService.PROTECTED_BROWSER_PACKAGES.contains(packageNameBlocked)) {
             showBrowserOnlyMessage()
@@ -74,10 +76,10 @@ class AppGateActivity : Activity() {
         }
         root.addView(TextView(this).apply{text="🛡️🔒";textSize=50f;gravity=Gravity.CENTER},LinearLayout.LayoutParams(-1,dp(72)))
         root.addView(TextView(this).apply{
-            text="מסך נעילה";textSize=24f;setTextColor(Color.WHITE);gravity=Gravity.CENTER
+            text=if (protectionGate) "אישור השבתה" else "מסך נעילה";textSize=24f;setTextColor(Color.WHITE);gravity=Gravity.CENTER
         },LinearLayout.LayoutParams(-1,dp(40)))
         root.addView(TextView(this).apply{
-            text="הזן את סיסמת הפתיחה";textSize=15f;setTextColor(Color.rgb(241,238,255));gravity=Gravity.CENTER
+            text=if (protectionGate) "הזן את הקוד כדי להמשיך"; else "הזן את סיסמת הפתיחה";textSize=15f;setTextColor(Color.rgb(241,238,255));gravity=Gravity.CENTER
         },LinearLayout.LayoutParams(-1,dp(34)))
         val mode = prefs.getString("auth_mode","PIN4")
         if (mode == "BIOMETRIC") {
@@ -187,6 +189,11 @@ class AppGateActivity : Activity() {
     }
 
     private fun allowAndClose() {
+        if (protectionGate) {
+            AppBlockAccessibilityServiceHolder.service?.allowSettingsForDuration(5_000L)
+            finish()
+            return
+        }
         AppBlockAccessibilityServiceHolder.service?.allowCurrentPackage(packageNameBlocked)
         packageManager.getLaunchIntentForPackage(packageNameBlocked)?.let { launch ->
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
