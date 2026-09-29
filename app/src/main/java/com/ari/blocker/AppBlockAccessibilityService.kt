@@ -12,6 +12,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
     private var temporaryAllowedUntil = 0L
     private var gateLaunchAt = 0L
     private var lastSearchRedirectAt = 0L
+    private var settingsAllowedUntil = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -32,6 +33,18 @@ class AppBlockAccessibilityService : AccessibilityService() {
         val blockedByUser = controlPrefs.getStringSet("blocked_apps", emptySet())?.contains(pkg) == true
         val requireCodeForBlockedApps = getSharedPreferences("settings", MODE_PRIVATE).getBoolean("require_code_for_blocked_apps", true)
         val now = System.currentTimeMillis()
+
+        // When the user opens this app's Android Settings page, require the app code
+        // immediately before the Disable control can be used.
+        if (pkg == SETTINGS_PACKAGE && isOurDisableScreen()) {
+            if (now >= settingsAllowedUntil && getSharedPreferences("settings", MODE_PRIVATE).getString("pin_hash", null) != null) {
+                if (now - gateLaunchAt >= SETTINGS_GATE_COOLDOWN_MS) {
+                    gateLaunchAt = now
+                    launchGate(pkg, allowAuthentication = true, protectionGate = true)
+                }
+            }
+            return
+        }
 
         if (!isProtectedBrowser && (!blockedByUser || !requireCodeForBlockedApps)) {
             unlockedPackage = null
@@ -164,11 +177,26 @@ class AppBlockAccessibilityService : AccessibilityService() {
         return host == "google.com" || host.endsWith(".google.com") || host.endsWith(".google.co.il")
     }
 
-    private fun launchGate(pkg: String, allowAuthentication: Boolean) {
+    private fun isOurDisableScreen(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        return try {
+            val texts = mutableListOf<String>()
+            collectVisibleText(root, texts)
+            val combined = texts.joinToString(" ").lowercase()
+            val hasAppName = combined.contains("מגן +") || combined.contains("magen +")
+            val hasDisableControl = listOf("השבת", "השבתה", "disable").any { combined.contains(it) }
+            hasAppName && hasDisableControl
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun launchGate(pkg: String, allowAuthentication: Boolean, protectionGate: Boolean = false) {
         startActivity(Intent(this, AppGateActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra("blocked_package", pkg)
             putExtra("allow_authentication", allowAuthentication)
+            putExtra("protection_gate", protectionGate)
         })
     }
 
@@ -176,6 +204,10 @@ class AppBlockAccessibilityService : AccessibilityService() {
         unlockedPackage = pkg
         temporaryAllowedPackage = null
         temporaryAllowedUntil = 0L
+    }
+
+    fun allowSettingsForDuration(durationMs: Long = 5_000L) {
+        settingsAllowedUntil = System.currentTimeMillis() + durationMs
     }
 
     fun allowPackageFromProtectedApp(pkg: String, durationMs: Long = 5 * 60_000L) {
@@ -190,6 +222,9 @@ class AppBlockAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {}
 
     companion object {
+        private const val SETTINGS_PACKAGE = "com.android.settings"
+        private const val SETTINGS_GATE_COOLDOWN_MS = 1_500L
+
         private val BLOCKED_SEARCH_TERMS = setOf(
             "sex", "porn", "porno", "pornography", "xxx", "hentai", "nude", "nudes", "naked",
             "פורנו", "סקס", "עירום", "ערום"
