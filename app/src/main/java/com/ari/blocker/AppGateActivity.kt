@@ -23,11 +23,15 @@ class AppGateActivity : Activity() {
     private lateinit var packageNameBlocked: String
     private lateinit var codeInput: EditText
     private var protectionGate = false
+    private var settingsAction: String? = null
+    private var settingsData: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         packageNameBlocked = intent.getStringExtra("blocked_package") ?: run { finish(); return }
         protectionGate = intent.getBooleanExtra("protection_gate", false)
+        settingsAction = intent.getStringExtra("settings_action")
+        settingsData = intent.getStringExtra("settings_data")
         if (!intent.getBooleanExtra("allow_authentication", true) &&
             AppBlockAccessibilityService.PROTECTED_BROWSER_PACKAGES.contains(packageNameBlocked)) {
             showBrowserOnlyMessage()
@@ -191,6 +195,14 @@ class AppGateActivity : Activity() {
     private fun allowAndClose() {
         if (protectionGate) {
             AppBlockAccessibilityServiceHolder.service?.allowSettingsForDuration(5_000L)
+            val action = settingsAction
+            if (!action.isNullOrBlank()) {
+                val settingsIntent = Intent(action)
+                if (!settingsData.isNullOrBlank()) {
+                    settingsIntent.data = android.net.Uri.parse(settingsData)
+                }
+                try { startActivity(settingsIntent) } catch (_: Exception) {}
+            }
             finish()
             return
         }
